@@ -5,6 +5,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import TerminalContact from "./TerminalContact";
 import { LiveSystems, SystemChrome } from "./SystemExperience";
+import { InfrastructureFlow, RequestLifecycle } from "./BackendMotionSystem";
 
 const stack = ["Python", "FastAPI", "Django", "PostgreSQL", "Redis", "Docker", "Go"];
 
@@ -52,6 +53,11 @@ const projects = [
       "A clean, extensible store API built around Django REST Framework and PostgreSQL.",
     tags: ["Django", "DRF", "PostgreSQL"],
     href: "https://github.com/AliDvlpr/Django_Store",
+    service: "django-store",
+    version: "v1.4.2",
+    region: "eu-central",
+    requests: "1.2M",
+    response: '{"status":"healthy","items":24}',
   },
   {
     index: "02",
@@ -61,6 +67,11 @@ const projects = [
       "A comprehensive Django commerce platform designed for maintainable product and order workflows.",
     tags: ["Python", "Django", "PostgreSQL"],
     href: "https://github.com/AliDvlpr/ecostore",
+    service: "ecostore-api",
+    version: "v2.1.0",
+    region: "eu-west",
+    requests: "864K",
+    response: '{"orders":18,"latency_ms":36}',
   },
   {
     index: "03",
@@ -70,6 +81,11 @@ const projects = [
       "A community and event platform connecting developers through education and real software projects.",
     tags: ["Community", "Events", "Education"],
     href: "https://codegap.ir/",
+    service: "codegap-core",
+    version: "v1.8.6",
+    region: "me-central",
+    requests: "438K",
+    response: '{"community":"online","events":12}',
   },
 ];
 
@@ -156,6 +172,7 @@ export default function Home() {
     if (reduceMotion) return;
 
     const context = gsap.context(() => {
+      const select = gsap.utils.selector(root);
       const intro = gsap.timeline({ defaults: { ease: "power4.out" } });
       intro
         .from(".nav-shell", { y: -24, opacity: 0, duration: 0.7 })
@@ -173,10 +190,28 @@ export default function Home() {
         ease: "power2.inOut",
         delay: 0.65,
       });
-      gsap.to(".packet-a", { y: 85, duration: 1.8, repeat: -1, ease: "none" });
-      gsap.to(".packet-b", { y: 80, duration: 2.2, repeat: -1, ease: "none", delay: 0.5 });
-      gsap.to(".packet-c", { x: 110, duration: 2.4, repeat: -1, ease: "none" });
-      gsap.to(".packet-d", { x: 95, duration: 2.8, repeat: -1, ease: "none", delay: 0.8 });
+      const architectureIdle = gsap.timeline({ paused: true, repeat: -1 })
+        .to(".packet-a", { y: 85, duration: 1.8, ease: "none" }, 0)
+        .to(".packet-b", { y: 80, duration: 2.2, ease: "none" }, 0.5)
+        .to(".packet-c", { x: 110, duration: 2.4, ease: "none" }, 0)
+        .to(".packet-d", { x: 95, duration: 2.8, ease: "none" }, 0.8)
+        .to(".cache-node", { "--pulse": 1, duration: .25, yoyo: true, repeat: 1 }, 1.1)
+        .to(".db-node", { "--pulse": 1, duration: .25, yoyo: true, repeat: 1 }, 2.1);
+      ScrollTrigger.create({
+        trigger: ".architecture",
+        start: "top bottom",
+        end: "bottom top",
+        onEnter: () => architectureIdle.play(),
+        onEnterBack: () => architectureIdle.play(),
+        onLeave: () => architectureIdle.pause(),
+        onLeaveBack: () => architectureIdle.pause(),
+      });
+
+      gsap.to(".system-spine i", {
+        scaleY: 1,
+        ease: "none",
+        scrollTrigger: { trigger: root.current, start: "top top", end: "bottom bottom", scrub: .35 },
+      });
 
       gsap.utils.toArray<HTMLElement>(".reveal").forEach((element) => {
         gsap.from(element, {
@@ -197,6 +232,17 @@ export default function Home() {
           scrollTrigger: { trigger: card, start: "top 88%", once: true },
         });
       });
+      gsap.fromTo(".timeline", { "--timeline-progress": 0 }, {
+        "--timeline-progress": 1,
+        ease: "none",
+        scrollTrigger: { trigger: ".timeline", start: "top 78%", end: "bottom 42%", scrub: .3 },
+      });
+      select("[data-timeline-node]").forEach((row) => {
+        gsap.to(row, {
+          "--timeline-active": 1,
+          scrollTrigger: { trigger: row, start: "top 72%", end: "bottom 48%", toggleActions: "play reverse play reverse" },
+        });
+      });
     }, root);
     return () => context.revert();
   }, []);
@@ -204,6 +250,7 @@ export default function Home() {
   return (
     <main ref={root}>
       <SystemChrome />
+      <div className="system-spine" aria-hidden="true"><i /></div>
       <header className="nav-shell">
         <a className="brand" href="#top" aria-label="Ali Mohammadi home">
           A<span>M</span><i />
@@ -249,6 +296,8 @@ export default function Home() {
         </a>
       </section>
 
+      <RequestLifecycle />
+
       <section className="section work-section" id="work">
         <div className="section-heading reveal">
           <p>01 / SELECTED WORK</p>
@@ -259,17 +308,26 @@ export default function Home() {
           {projects.map((project) => (
             <a className="project-card" href={project.href} target="_blank" rel="noreferrer" key={project.title}>
               <div className="project-top">
-                <span>{project.index}</span><Arrow />
+                <span>{project.index}</span><b><i /> HEALTHY</b><Arrow />
               </div>
               <div className="project-visual">
                 <div className="visual-grid" />
-                <span className="visual-label">SYSTEM / {project.index}</span>
+                <span className="visual-label">SERVICE / {project.service}</span>
                 <div className="visual-core">{project.index === "01" ? "API" : project.index === "02" ? "DB" : "CG"}</div>
                 <i className="orbit orbit-one" /><i className="orbit orbit-two" />
+                <i className="service-request" />
+                <div className="deploy-state"><span>DEPLOYING</span><i /><b>READY</b></div>
               </div>
+              <dl className="service-meta">
+                <div><dt>VERSION</dt><dd>{project.version}</dd></div>
+                <div><dt>UPTIME</dt><dd>99.98%</dd></div>
+                <div><dt>REGION</dt><dd>{project.region}</dd></div>
+                <div><dt>REQUESTS</dt><dd>{project.requests}</dd></div>
+              </dl>
               <p className="project-category">{project.category}</p>
               <h3>{project.title}</h3>
               <p className="project-description">{project.description}</p>
+              <code className="service-response">{project.response}</code>
               <div className="project-tags">{project.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
             </a>
           ))}
@@ -310,11 +368,13 @@ export default function Home() {
         </div>
         <div className="timeline">
           {experience.map((item) => (
-            <article className="timeline-row reveal" key={item.period + item.company}>
+            <article className="timeline-row reveal" data-timeline-node key={item.period + item.company}>
+              <i className="timeline-node" />
               <p className="timeline-period">{item.period}</p>
               <div><h3>{item.role}</h3><p className="timeline-company">{item.company}</p></div>
               <p className="timeline-detail">{item.detail}</p>
               <span className="timeline-tech">{item.tech}</span>
+              <b className="upgrade-label">SYSTEM UPGRADE</b>
             </article>
           ))}
         </div>
@@ -328,6 +388,7 @@ export default function Home() {
       </section>
 
       <LiveSystems />
+      <InfrastructureFlow />
       <TerminalContact />
       <footer className="legacy-contact" aria-hidden="true">
         <div className="footer-status reveal"><i /> OPEN TO AMBITIOUS BACKEND PROJECTS</div>
