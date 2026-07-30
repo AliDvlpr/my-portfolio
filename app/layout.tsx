@@ -16,9 +16,7 @@ export const metadata: Metadata = {
   title: "Ali Mohammadi — Backend Engineer",
   description:
     "Backend engineer building scalable Python systems with FastAPI, Django, PostgreSQL, and Redis.",
-  other: {
-    "codex-preview": "development",
-  },
+  other: { "theme-color": "#080906" },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

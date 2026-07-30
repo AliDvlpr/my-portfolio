@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import TerminalContact from "./TerminalContact";
+import { LiveSystems, SystemChrome } from "./SystemExperience";
 
 const stack = ["Python", "FastAPI", "Django", "PostgreSQL", "Redis", "Docker", "Go"];
 
@@ -201,6 +203,7 @@ export default function Home() {
 
   return (
     <main ref={root}>
+      <SystemChrome />
       <header className="nav-shell">
         <a className="brand" href="#top" aria-label="Ali Mohammadi home">
           A<span>M</span><i />
@@ -324,7 +327,9 @@ export default function Home() {
         </div>
       </section>
 
-      <footer id="contact">
+      <LiveSystems />
+      <TerminalContact />
+      <footer className="legacy-contact" aria-hidden="true">
         <div className="footer-status reveal"><i /> OPEN TO AMBITIOUS BACKEND PROJECTS</div>
         <h2 className="reveal">Have a system<br />worth building?</h2>
         <a className="footer-email reveal" href="mailto:alimohammadi.8773@gmail.com">
