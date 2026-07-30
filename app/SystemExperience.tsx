@@ -145,11 +145,21 @@ export function SystemChrome() {
 }
 
 export function LiveSystems() {
+  const root = useRef<HTMLElement>(null);
   const [tick, setTick] = useState(0);
   const [logs, setLogs] = useState(() => logMessages.slice(0, 4));
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const element = root.current;
+    if (!element) return;
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { rootMargin: "120px" });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!visible || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const metricTimer = window.setInterval(() => setTick((value) => value + 1), 1300);
     let index = 4;
     const logTimer = window.setInterval(() => {
@@ -157,20 +167,23 @@ export function LiveSystems() {
       index += 1;
     }, 1800);
     return () => { window.clearInterval(metricTimer); window.clearInterval(logTimer); };
-  }, []);
+  }, [visible]);
 
   const metrics = [
     ["REQUESTS / SEC", `${(2842 + Math.sin(tick) * 94).toFixed(0)}`, "LIVE"],
     ["UPTIME", "99.98%", "30D"],
+    ["P50 LATENCY", `${(18 + (tick % 3) * .8).toFixed(1)}ms`, "NORMAL"],
     ["P95 LATENCY", `${(34 + (tick % 5) * 1.7).toFixed(1)}ms`, "HEALTHY"],
     ["REDIS", `${96 + (tick % 3)}%`, "HIT RATE"],
     ["POSTGRES", `${12 + (tick % 4)}`, "CONNECTIONS"],
     ["WORKERS", `${8 + (tick % 2)}`, "ACTIVE"],
     ["QUEUE SIZE", `${3 + (tick % 5)}`, "JOBS"],
+    ["ERROR RATE", `${(0.06 + (tick % 3) * .01).toFixed(2)}%`, "NOMINAL"],
+    ["DEPLOYMENT", "v2.4.1", "STABLE"],
   ];
 
   return (
-    <section className="section systems-section" id="systems" aria-labelledby="systems-title">
+    <section ref={root} className="section systems-section" id="systems" aria-labelledby="systems-title">
       <div className="systems-heading reveal">
         <div><p>05 / SYSTEM EXPERIENCE</p><h2 id="systems-title">Live operational<br />intelligence.</h2></div>
         <div className="network-state"><i /> NETWORK ACTIVITY <b>STABLE</b></div>
