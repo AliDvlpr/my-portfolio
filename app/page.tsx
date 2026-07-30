@@ -6,6 +6,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import TerminalContact from "./TerminalContact";
 import { LiveSystems, SystemChrome } from "./SystemExperience";
 import { InfrastructureFlow, RequestLifecycle } from "./BackendMotionSystem";
+import { featuredProjects as projects } from "@/content/projects";
 
 const stack = ["Python", "FastAPI", "Django", "PostgreSQL", "Redis", "Docker", "Go"];
 
@@ -41,51 +42,6 @@ const experience = [
     detail:
       "Progressed from intern to mid-senior engineer, leading CRM projects, mentoring developers, and teaching full-stack web development.",
     tech: "PYTHON / JAVASCRIPT / GO / DOCKER",
-  },
-];
-
-const projects = [
-  {
-    index: "01",
-    title: "Django Store",
-    category: "Commerce backend",
-    description:
-      "A clean, extensible store API built around Django REST Framework and PostgreSQL.",
-    tags: ["Django", "DRF", "PostgreSQL"],
-    href: "https://github.com/AliDvlpr/Django_Store",
-    service: "django-store",
-    version: "v1.4.2",
-    region: "eu-central",
-    requests: "1.2M",
-    response: '{"status":"healthy","items":24}',
-  },
-  {
-    index: "02",
-    title: "Ecostore",
-    category: "E-commerce platform",
-    description:
-      "A comprehensive Django commerce platform designed for maintainable product and order workflows.",
-    tags: ["Python", "Django", "PostgreSQL"],
-    href: "https://github.com/AliDvlpr/ecostore",
-    service: "ecostore-api",
-    version: "v2.1.0",
-    region: "eu-west",
-    requests: "864K",
-    response: '{"orders":18,"latency_ms":36}',
-  },
-  {
-    index: "03",
-    title: "Code Gap",
-    category: "Developer community",
-    description:
-      "A community and event platform connecting developers through education and real software projects.",
-    tags: ["Community", "Events", "Education"],
-    href: "https://codegap.ir/",
-    service: "codegap-core",
-    version: "v1.8.6",
-    region: "me-central",
-    requests: "438K",
-    response: '{"community":"online","events":12}',
   },
 ];
 
@@ -248,7 +204,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main ref={root}>
+    <main ref={root} id="main-content">
       <SystemChrome />
       <div className="system-spine" aria-hidden="true"><i /></div>
       <header className="nav-shell">
@@ -306,13 +262,13 @@ export default function Home() {
         </div>
         <div className="project-grid">
           {projects.map((project) => (
-            <a className="project-card" href={project.href} target="_blank" rel="noreferrer" key={project.title}>
+            <a className="project-card" href={`/projects/${project.slug}`} key={project.title}>
               <div className="project-top">
                 <span>{project.index}</span><b><i /> HEALTHY</b><Arrow />
               </div>
               <div className="project-visual">
                 <div className="visual-grid" />
-                <span className="visual-label">SERVICE / {project.service}</span>
+                <span className="visual-label">SERVICE / {project.slug}</span>
                 <div className="visual-core">{project.index === "01" ? "API" : project.index === "02" ? "DB" : "CG"}</div>
                 <i className="orbit orbit-one" /><i className="orbit orbit-two" />
                 <i className="service-request" />
@@ -328,7 +284,7 @@ export default function Home() {
               <h3>{project.title}</h3>
               <p className="project-description">{project.description}</p>
               <code className="service-response">{project.response}</code>
-              <div className="project-tags">{project.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+              <div className="project-tags">{project.stack.map((tag) => <span key={tag}>{tag}</span>)}</div>
             </a>
           ))}
         </div>

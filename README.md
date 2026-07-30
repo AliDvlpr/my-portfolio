@@ -1,108 +1,157 @@
-# vinext-starter
+# Ali Developer Portfolio
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+A React 19 portfolio running on Vinext and Cloudflare Workers. The public experience combines the Phase 1 system interface and Phase 2 backend motion system with a production contact pipeline, validated MDX content, project case studies, a protected owner console, privacy-conscious analytics, and D1 persistence.
 
-## Prerequisites
+## Architecture
 
-- Node.js `>=22.13.0`
-- Linux with `flock`, `curl`, and GNU `timeout`
+```text
+Browser
+  ↓
+Portfolio application
+  ├─ MDX blog and project case studies
+  ├─ Resume and SEO feeds
+  └─ Contact terminal
+       ↓ POST /api/contact
+       ├─ strict payload validation + abuse scoring
+       ├─ Cloudflare Turnstile verification
+       ├─ D1-backed rate and duplicate limiting
+       ├─ D1 contact persistence
+       └─ Resend owner + visitor email
 
-## Sites Lifecycle
-
-The Sites lifecycle CLI runs the locked dependency install before returning this checkout. Edit the source under `app/`, then checkpoint when a coherent milestone is ready to inspect or share. The remote Sites builder runs `npm run build` against the pushed commit. Do not repeat install or build as a normal pre-checkpoint step.
-
-This starter does not use `wrangler.jsonc`.
-
-`install:ci` is intentionally a single, non-retrying `npm ci`. It refuses a concurrent install for the same project, consumes a matching image-seeded npm cache with `--prefer-offline` while retaining registry fallback for a missing cache object, otherwise downloads and verifies the complete vinext tarball recorded in `package-lock.json`, limits npm to one socket, and terminates a stalled install. `build` applies a short timeout and then validates the Sites artifact. These helpers target Linux and use GNU `timeout`; they are not native macOS scripts.
-
-Scripts that need writable project-scoped home, npm, XDG, and temporary paths use `scripts/sites-env.sh`. The `dev` and `start` scripts honor the caller's runtime environment and keep Wrangler logs inside the checkout. The generated `.sites-runtime/` directory is disposable and ignored by Git.
-
-## Included Shape
-
-- edit site code under `app/`
-- `app/chatgpt-auth.ts` provides optional dispatch-owned ChatGPT sign-in helpers
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/index.ts` reads the D1 binding from the Cloudflare Worker environment
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+Admin
+  ├─ Sign in with ChatGPT identity
+  ├─ explicit ADMIN_EMAILS authorization
+  ├─ contact review and status mutations
+  └─ append-only audit records
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+The contact record is stored before email is sent. A delivery failure therefore leaves one reviewable record marked `failed`; retries cannot silently create duplicate records or emails because recent normalized payload hashes are rejected.
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+## Local setup
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+Requirements:
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+- Node.js 22.13 or newer
+- npm
+- Bash for the checked-in Sites lifecycle scripts (Git Bash, WSL, or Linux)
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
+```bash
+npm ci
+cp .env.example .env.local
+npm run db:generate
+npm run dev
+```
 
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
+Open `http://localhost:5173/`. Development mode can render the contact flow without Resend or Turnstile credentials, but production builds require all security-sensitive contact variables. Apply the generated SQL in `drizzle/` to the D1 database through the hosting platform before enabling contact submissions.
 
-## Diagnostic Commands
+## Environment configuration
 
-- `npm run install:ci`: perform the one bounded lockfile install
-- `npm run dev`: start the Vite/Vinext development server
-- `npm run build`: build and validate the deployable Sites artifact
-- `npm run start`: start the built Vinext application
-- `npm test`: build, validate, and verify the rendered development-preview metadata
-- `npm run validate:artifact`: recheck an existing artifact's manifest and ESM `default.fetch` export
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+Copy `.env.example`; never commit real values.
 
-Use build and validation commands for targeted diagnosis after a remote failure, not as part of the normal checkpoint path.
+| Variable | Scope | Purpose |
+| --- | --- | --- |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | public | Cloudflare Turnstile widget key |
+| `TURNSTILE_SECRET_KEY` | server | Turnstile Siteverify secret |
+| `RESEND_API_KEY` | server | transactional email API key |
+| `CONTACT_FROM_EMAIL` | server | verified Resend sender |
+| `CONTACT_TO_EMAIL` | server | owner notification recipient |
+| `CONTACT_REPLY_TO_EMAIL` | server | optional fallback reply-to |
+| `RATE_LIMIT_SALT` | server | hashes source identifiers; use 16+ random characters |
+| `ADMIN_EMAILS` | server | comma-separated owner allowlist |
+| `SITE_URL` | server | canonical production origin |
+| `ANALYTICS_ENABLED` | server | enables first-party event storage |
 
-The timeout defaults can be overridden for a controlled canary with `SITES_INSTALL_TIMEOUT`, `SITES_INSTALL_KILL_AFTER`, `SITES_BUILD_TIMEOUT`, and `SITES_BUILD_KILL_AFTER`. A timeout fails the command; the helpers never retry an unchanged install or build.
+Production contact policy is three attempts per ten minutes, ten per day per hashed source, plus a 30-minute duplicate-payload cooldown. Raw IP addresses, Turnstile tokens, message bodies, authentication tokens, and secrets are never written to logs.
 
-## Learn More
+## Contact and email configuration
 
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+1. Create a Turnstile widget and configure its public and secret keys.
+2. Verify a sending domain in Resend.
+3. Set the sender and recipient variables.
+4. Bind D1 as `DB` (declared by `.openai/hosting.json`).
+5. Apply the migration in `drizzle/`.
+
+The owner notification includes safe submission metadata and the visitor message. The confirmation is intentionally non-promissory and includes a short copy of the request. Both templates have plain-text fallbacks.
+
+Minimal stored contact data is intended for operational follow-up. Establish and document a retention window appropriate to the deployment (for example, archive or delete resolved messages after 12 months). Turnstile tokens and raw source addresses are never stored.
+
+## Content authoring
+
+Blog posts live in `content/blog/*.mdx`. Required frontmatter:
+
+```yaml
+title: Building a Scalable FastAPI Service
+description: Practical architecture decisions for production APIs.
+publishedAt: 2026-07-31
+updatedAt: 2026-07-31
+status: published
+tags: [FastAPI, Python, Architecture]
+featured: true
+```
+
+Drafts are excluded from public listings and remain visible to an authorized admin. MDX is compiled on the server with a controlled component map; do not add arbitrary executable components. Headings, reading time, table of contents, copyable code, related posts, RSS, and sitemap entries are derived automatically.
+
+Project content is validated in `content/projects.ts`. Each project supplies service metadata plus case-study fields for `/projects/[slug]`. Validation rejects malformed fields and duplicate slugs.
+
+## Admin authentication
+
+`/admin` uses the hosting platform’s Sign in with ChatGPT identity and then enforces `ADMIN_EMAILS` on every page and mutation. Authentication alone does not confer authorization. Status mutations also require a same-origin request and produce an audit event without copying message content.
+
+The admin is intentionally small: paginated contact review, status updates, delivery state, draft previews, project inventory, and a compact analytics summary.
+
+## Analytics and observability
+
+The first-party endpoint accepts only these event names:
+
+- `page_view`
+- `project_opened`
+- `article_opened`
+- `resume_downloaded`
+- `contact_started`
+- `contact_submitted`
+- `contact_failed`
+- `command_palette_opened`
+- `terminal_command_used`
+
+Event delivery is asynchronous and failure-safe. Only an event name, page path, timestamp, and allowlisted short metadata are stored. There is no session replay, fingerprinting, advertising identifier, or raw IP storage.
+
+Server logs are structured JSON events with request IDs and safe timing/status metadata. User messages and credentials are deliberately excluded.
+
+## Security
+
+The Worker applies CSP, HSTS on HTTPS, `X-Content-Type-Options`, a strict referrer policy, a restrictive permissions policy, and frame protection. Turnstile and Resend are server-verified. CSP currently permits inline scripts and styles because Vinext hydration and React Email/GSAP-generated styles require them; remote scripts and frames remain restricted to Cloudflare Turnstile.
+
+The contact endpoint uses strict schemas, request identifiers, normalized payload hashing, a honeypot, minimum completion time, link/repetition scoring, D1-backed rate limits, and safe structured errors. Production configuration fails clearly when required secrets are missing.
+
+## Resume, feeds, and metadata
+
+- `/resume` is an accessible, printable resume route.
+- `/rss.xml` exposes published articles.
+- `/sitemap.xml` includes public pages, articles, and projects.
+- `/robots.txt` blocks admin and API routes.
+- Canonical, Open Graph, Twitter, Person, Article, and CreativeWork metadata are generated server-side.
+
+## Validation
+
+```bash
+npm run lint
+npm run typecheck
+npm run test:unit
+npm run test
+npm run build
+npm run validate:artifact
+```
+
+Tests mock verification, persistence, and email delivery. No test sends real email or calls Turnstile.
+
+## Deployment
+
+1. Provision the Sites D1 binding declared in `.openai/hosting.json`.
+2. Apply `drizzle/*.sql`.
+3. Configure all production environment variables.
+4. Configure Turnstile allowed hostnames and a verified Resend sender domain.
+5. Configure Sign in with ChatGPT and set the owner allowlist.
+6. Build and deploy the saved Sites version.
+7. Verify `/api/contact`, `/admin`, `/rss.xml`, `/sitemap.xml`, `/robots.txt`, and `/resume`.
+
+Known limitations: blog and project authoring is Git-based rather than a browser CMS; analytics is intentionally aggregate-only; local contact delivery is bypassed without provider credentials; and owner access depends on the hosting platform’s identity headers.

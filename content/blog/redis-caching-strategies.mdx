@@ -1,0 +1,39 @@
+---
+title: Redis Caching Strategies That Stay Correct
+description: Cache-aside, invalidation, and stampede protection for real systems.
+publishedAt: 2026-07-24
+updatedAt: 2026-07-31
+status: published
+tags:
+  - Redis
+  - Caching
+  - Performance
+featured: true
+---
+
+## Treat the cache as a derived view
+
+Redis should accelerate a source of truth, not quietly become one. Cache-aside keeps that relationship explicit: read the cache, fall back to the database, then populate the cache with a bounded lifetime.
+
+```python
+async def load_project(project_id: str):
+    key = f"project:{project_id}"
+    if cached := await redis.get(key):
+        return Project.model_validate_json(cached)
+
+    project = await repository.get(project_id)
+    await redis.set(key, project.model_dump_json(), ex=300)
+    return project
+```
+
+## Prevent stampedes
+
+When a popular key expires, many requests can regenerate it at once. A short distributed lock, probabilistic early refresh, or request coalescing keeps the database from absorbing the spike.
+
+## Invalidation is a product decision
+
+Choose the amount of tolerated staleness per use case. Inventory and permissions often require eager invalidation. A public project list can usually tolerate a short TTL.
+
+### Observe the cache
+
+Track hit rate, eviction rate, memory pressure, and regeneration latency together. A high hit rate is not useful if the cached data is wrong.

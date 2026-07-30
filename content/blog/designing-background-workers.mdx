@@ -1,0 +1,37 @@
+---
+title: Designing Background Workers for Failure
+description: Reliable queues, idempotent jobs, and operationally clear workers.
+publishedAt: 2026-07-28
+updatedAt: 2026-07-31
+status: published
+tags:
+  - Workers
+  - Queues
+  - Reliability
+featured: false
+---
+
+## Delivery is usually at least once
+
+Assume a worker can receive the same job more than once. A stable idempotency key and a durable job record turn retries from a risk into normal control flow.
+
+```python
+async def process(job: Job):
+    if await results.exists(job.idempotency_key):
+        return
+
+    result = await execute(job.payload)
+    await results.store(job.idempotency_key, result)
+```
+
+## Separate retries from poison messages
+
+Transient failures deserve bounded exponential backoff. Invalid payloads and invariant violations should move to a dead-letter path with enough safe metadata to investigate.
+
+## Make queue pressure visible
+
+Queue depth alone is incomplete. Measure oldest-job age, processing duration, retry count, worker saturation, and completion rate.
+
+### Define ownership
+
+Every queue needs an operational owner, an alert threshold, and a documented replay procedure. Reliability comes from the whole lifecycle, not just the handler.
