@@ -2,6 +2,44 @@
 
 A React 19 portfolio running on Vinext and Cloudflare Workers. The public experience combines the Phase 1 system interface and Phase 2 backend motion system with a production contact pipeline, validated MDX content, project case studies, a protected owner console, privacy-conscious analytics, and D1 persistence.
 
+## Route architecture
+
+```text
+Public layout
+├─ /                  focused overview and live system snapshot
+├─ /about             profile, principles, and experience history
+├─ /projects          searchable, URL-filtered service registry
+│  └─ /projects/:slug engineering case study
+├─ /blog              searchable, tag-filtered writing archive
+│  └─ /blog/:slug     long-form engineering article
+├─ /uses              maintained tools and workflow inventory
+├─ /resume            accessible HTML resume and PDF download
+└─ /contact           complete production contact gateway
+
+Protected layout
+└─ /admin             authenticated owner console
+```
+
+`lib/routes.ts` is the public navigation and command-palette registry. `content/profile.ts`, `content/projects.ts`, `content/uses.ts`, and `content/blog/*.mdx` are shared by homepage previews and full routes, preventing parallel copies from drifting.
+
+The public shell owns active-route navigation, the keyboard-accessible mobile drawer, short route traces, the command palette, skip link, and shared footer. Route transitions use transform/opacity-friendly CSS and defer to native history and scroll restoration. Reduced-motion mode removes transition and continuous motion.
+
+### Navigation commands
+
+Press `Ctrl+K` or `Command+K` and search route names, project names, aliases, or stacks. Commands include home, about, projects, blog, uses, resume, contact, copy email, toggle motion, toggle logs, GitHub, and every registered project.
+
+### Updating route content
+
+- Add a project by extending the validated source in `content/projects.ts`; the registry, homepage, sitemap, command palette, and detail route update from that source.
+- Add an article under `content/blog/` with valid frontmatter. Drafts stay out of public routes, RSS, and sitemap. Article Markdown is rendered through a controlled server-side parser; arbitrary components are not executed.
+- Update `/uses` through `content/uses.ts`, including its visible update date.
+- Update professional history in `content/profile.ts`; About, homepage previews, and the HTML resume reuse it.
+- Regenerate the downloadable resume with `scripts/generate_resume_pdf.py` after material resume changes.
+
+Every public index has unique metadata and a canonical URL. Project and article metadata derives from validated content. `app/sitemap.ts` includes public indexes and published detail pages, RSS contains published articles only, and robots excludes admin/API surfaces.
+
+For local route testing, start the development server and test direct loads plus client navigation at widths from 320px through desktop. The project filter uses `?type=`/`?q=` and blog filters use `?tag=`/`?q=`, so filtered archives are deep-linkable.
+
 ## Architecture
 
 ```text

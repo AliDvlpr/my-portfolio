@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MDXRemote } from "next-mdx-remote/rsc";
 import { getAllBlogPosts, getBlogPost, getRelatedPosts } from "@/lib/content";
-import { ContentNav, formatDate } from "../page";
-import { mdxComponents } from "../mdx-components";
+import { formatDate } from "../page";
+import { Breadcrumbs } from "@/app/PagePrimitives";
+import { SafeArticleBody } from "../SafeArticleBody";
 import { ArticleTracker } from "./ArticleTracker";
 
 export function generateStaticParams() {
@@ -39,12 +39,12 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     author: { "@type": "Person", name: "Ali Mohammadi", url: "https://github.com/AliDvlpr" },
   };
   return <main className="content-page article-page" id="main-content">
-    <ContentNav /><ArticleTracker slug={slug} />
+    <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Blog", href: "/blog" }, { label: post.title }]} /><ArticleTracker slug={slug} />
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replaceAll("<", "\\u003c") }} />
-    <header className="article-header"><p>{post.tags.join(" / ")}</p><h1>{post.title}</h1><em>{post.description}</em><div><time dateTime={post.publishedAt}>{formatDate(post.publishedAt)}</time><span>{post.readingTime} MIN READ</span><span>STATUS / PUBLISHED</span></div></header>
+    <header className="article-header"><p>{post.tags.join(" / ")}</p><h1>{post.title}</h1><em>{post.description}</em><div><time dateTime={post.publishedAt}>{formatDate(post.publishedAt)}</time>{post.updatedAt && <span>REVISION / {formatDate(post.updatedAt)}</span>}<span>{post.readingTime} MIN READ</span><span>DOCUMENT STATUS / PUBLISHED</span></div></header>
     <div className="article-layout">
       <aside className="article-toc" aria-label="Table of contents"><p>ON THIS PAGE</p>{post.headings.map((heading) => <a className={`level-${heading.level}`} href={`#${heading.id}`} key={heading.id}>{heading.text}</a>)}</aside>
-      <article className="article-body"><MDXRemote source={post.body} components={mdxComponents} /></article>
+      <article className="article-body"><SafeArticleBody source={post.body} /></article>
     </div>
     <nav className="article-pagination" aria-label="Article pagination">
       <div>{previous && <Link href={`/blog/${previous.slug}`}><span>PREVIOUS</span>{previous.title}</Link>}</div>

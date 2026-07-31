@@ -1,7 +1,6 @@
 "use client";
 
 import Script from "next/script";
-import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/analytics-client";
 
@@ -194,11 +193,6 @@ export default function TerminalContact() {
             <span className="active-field" aria-hidden="true">active: {activeField}</span>
           </form>
         </div>
-      </div>
-      <div className="terminal-footer">
-        <p>ALI MOHAMMADI © 2026</p>
-        <div><Link href="/blog">BLOG</Link><Link href="/projects/django-store">PROJECTS</Link><Link href="/resume">RESUME</Link></div>
-        <a href="#top">BACK TO TOP ↑</a>
       </div>
     </section>
   );

@@ -3,16 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import gsap from "gsap";
 import { trackEvent } from "@/lib/analytics-client";
+import { publicRoutes } from "@/lib/routes";
+import { projects } from "@/content/projects";
 
-const commands = [
-  { label: "Go to selected work", hint: "#work", action: () => document.querySelector("#work")?.scrollIntoView() },
-  { label: "Go to about", hint: "#about", action: () => document.querySelector("#about")?.scrollIntoView() },
-  { label: "Go to experience", hint: "#experience", action: () => document.querySelector("#experience")?.scrollIntoView() },
-  { label: "Open contact terminal", hint: "#contact", action: () => document.querySelector("#contact")?.scrollIntoView() },
-  { label: "Open GitHub", hint: "↗", action: () => window.open("https://github.com/AliDvlpr", "_blank", "noopener,noreferrer") },
-  { label: "Open résumé", hint: "/resume", action: () => { trackEvent("resume_downloaded", { source: "command_palette" }); window.location.href = "/resume"; } },
-  { label: "Toggle theme", hint: "SOON", action: () => document.documentElement.classList.toggle("theme-preview") },
-];
+type Command = { label: string; aliases: string; hint: string; action: () => void };
 
 const logMessages = [
   ["INFO", "Request accepted", "GET /api/v1/projects"],
@@ -36,10 +30,31 @@ function fuzzyMatch(value: string, query: string) {
 
 export function SystemChrome() {
   const loader = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
-  const filtered = useMemo(() => commands.filter((command) => fuzzyMatch(`${command.label} ${command.hint}`, query)), [query]);
+  const commands = useMemo<Command[]>(() => [
+    ...publicRoutes.map((route) => ({ label: route.command, aliases: `${route.label} ${route.module}`, hint: route.href, action: () => { window.location.href = route.href; } })),
+    ...projects.map((project) => ({ label: `open project ${project.title}`, aliases: `${project.slug} ${project.stack.join(" ")}`, hint: `/projects/${project.slug}`, action: () => { window.location.href = `/projects/${project.slug}`; } })),
+    { label: "open GitHub", aliases: "source repository", hint: "↗", action: () => window.open("https://github.com/AliDvlpr", "_blank", "noopener,noreferrer") },
+    { label: "copy email", aliases: "contact address", hint: "COPY", action: () => { void navigator.clipboard.writeText("alimohammadi.8773@gmail.com"); } },
+    { label: "toggle motion", aliases: "reduced animation", hint: "MOTION", action: () => document.documentElement.classList.toggle("motion-paused") },
+    { label: "toggle logs", aliases: "stream console", hint: "LOGS", action: () => document.documentElement.classList.toggle("logs-hidden") },
+  ], []);
+  const filtered = useMemo(() => commands.filter((command) => fuzzyMatch(`${command.label} ${command.aliases} ${command.hint}`, query)), [commands, query]);
+
+  function closePalette() {
+    setPaletteOpen(false);
+    window.setTimeout(() => previousFocus.current?.focus(), 0);
+  }
+
+  function openPalette() {
+    previousFocus.current = document.activeElement as HTMLElement;
+    setPaletteOpen(true);
+    trackEvent("command_palette_opened");
+  }
 
   useEffect(() => {
     const element = loader.current;
@@ -63,11 +78,14 @@ export function SystemChrome() {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setPaletteOpen((current) => {
-          if (!current) trackEvent("command_palette_opened");
+          if (!current) {
+            previousFocus.current = document.activeElement as HTMLElement;
+            trackEvent("command_palette_opened");
+          }
           return !current;
         });
       }
-      if (event.key === "Escape") setPaletteOpen(false);
+      if (event.key === "Escape") closePalette();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -77,8 +95,8 @@ export function SystemChrome() {
     const command = filtered[index];
     if (!command) return;
     command.action();
-    trackEvent("terminal_command_used", { source: command.label });
-    setPaletteOpen(false);
+    trackEvent("command_navigation_used", { source: command.label });
+    closePalette();
     setQuery("");
   }
 
@@ -94,11 +112,11 @@ export function SystemChrome() {
         <div className="boot-progress"><i /></div>
       </div>
       <div className="ambient-layer" aria-hidden="true"><i /><i /><i /></div>
-      <button className="palette-trigger" onClick={() => { setPaletteOpen(true); trackEvent("command_palette_opened"); }} aria-label="Open command palette">
+      <button ref={trigger} className="palette-trigger" onClick={openPalette} aria-label="Open command palette">
         <span>COMMAND</span><kbd>CTRL K</kbd>
       </button>
       {paletteOpen && (
-        <div className="palette-backdrop" role="presentation" onMouseDown={() => setPaletteOpen(false)}>
+        <div className="palette-backdrop" role="presentation" onMouseDown={closePalette}>
           <div className="command-palette" role="dialog" aria-modal="true" aria-label="Command palette" onMouseDown={(event) => event.stopPropagation()}>
             <div className="palette-input">
               <span>›_</span>
