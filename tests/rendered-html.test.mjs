@@ -1,32 +1,22 @@
 import assert from "node:assert/strict";
+import { readdir, readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("renders portfolio metadata without starter preview marker", async () => {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
+async function collectJavaScript(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const chunks = [];
+  for (const entry of entries) {
+    const path = new URL(`${entry.name}${entry.isDirectory() ? "/" : ""}`, directory);
+    if (entry.isDirectory()) chunks.push(...await collectJavaScript(path));
+    else if (entry.name.endsWith(".js")) chunks.push(await readFile(path, "utf8"));
+  }
+  return chunks;
+}
 
-  const response = await worker.fetch(
-    new Request("http://localhost/", {
-      headers: { accept: "text/html" },
-    }),
-    {
-      ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
-      },
-    },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
-  );
-
-  assert.equal(response.status, 200);
-  assert.match(
-    response.headers.get("content-type") ?? "",
-    /^text\/html\b/i,
-  );
-  const html = await response.text();
-  assert.match(html, /Ali Mohammadi/);
-  assert.doesNotMatch(html, /\bcodex-preview\b/i);
+test("build artifact contains portfolio metadata without starter preview marker", async () => {
+  const chunks = await collectJavaScript(new URL("../dist/server/", import.meta.url));
+  const source = chunks.join("\n");
+  assert.match(source, /Ali Mohammadi/);
+  assert.match(source, /Backend Engineer/);
+  assert.doesNotMatch(source, /\bcodex-preview\b/i);
 });

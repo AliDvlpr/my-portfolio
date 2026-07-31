@@ -7,6 +7,8 @@ const allowedEvents = new Set([
   "page_view", "project_opened", "article_opened", "resume_downloaded",
   "contact_started", "contact_submitted", "contact_failed",
   "command_palette_opened", "terminal_command_used",
+  "navigation_used", "route_viewed", "project_filter_changed",
+  "article_tag_selected", "command_navigation_used",
 ]);
 
 export async function POST(request: Request) {
@@ -17,7 +19,7 @@ export async function POST(request: Request) {
       return Response.json({ success: false }, { status: 400 });
     }
     const safeMetadata = Object.fromEntries(Object.entries(input.metadata ?? {}).filter(([key, value]) =>
-      ["code", "requestId", "slug", "source"].includes(key) && typeof value === "string" && value.length <= 120
+      ["code", "requestId", "slug", "source", "destination", "filter", "tag"].includes(key) && typeof value === "string" && value.length <= 120
     ));
     await getDb().insert(analyticsEvents).values({
       id: crypto.randomUUID(),

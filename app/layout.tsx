@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "./Analytics";
+import { PublicShell } from "./PublicShell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,11 +26,13 @@ export const metadata: Metadata = {
     type: "profile",
     url: "/",
     siteName: "Ali Mohammadi",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Ali Mohammadi — Backend Engineer" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Ali Mohammadi — Backend Engineer",
     description: "Production-minded backend systems, architecture, and engineering notes.",
+    images: ["/og.png"],
   },
   other: { "theme-color": "#080906" },
   icons: {
@@ -58,7 +61,7 @@ export default function RootLayout({
           sameAs: ["https://github.com/AliDvlpr", "https://linkedin.com/in/alidvlpr"],
           knowsAbout: ["Python", "FastAPI", "Django", "PostgreSQL", "Redis", "System design"],
         }).replaceAll("<", "\\u003c") }} />
-        {children}
+        <PublicShell>{children}</PublicShell>
         <Analytics />
       </body>
     </html>
