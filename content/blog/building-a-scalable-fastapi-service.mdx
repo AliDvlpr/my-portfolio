@@ -1,0 +1,44 @@
+---
+title: Building a Scalable FastAPI Service
+description: Practical architecture decisions for production Python APIs.
+publishedAt: 2026-07-20
+updatedAt: 2026-07-31
+status: published
+tags:
+  - FastAPI
+  - Python
+  - Architecture
+featured: true
+---
+
+## Start with boundaries, not folders
+
+A production API becomes easier to evolve when transport, application logic, and persistence have explicit boundaries. The goal is not ceremony—it is keeping framework details from spreading through every decision.
+
+```python
+from fastapi import APIRouter, Depends
+
+router = APIRouter(prefix="/projects")
+
+@router.get("/{project_id}")
+async def get_project(project_id: str, service = Depends(project_service)):
+    return await service.get(project_id)
+```
+
+The route validates transport concerns. The service owns the use case. A repository owns persistence. That separation makes retries, tests, and migrations considerably safer.
+
+## Make failure visible
+
+Define request IDs at the edge, carry them through application logs, and emit bounded metadata. Avoid logging request bodies or authentication tokens.
+
+### A useful production checklist
+
+- timeouts on every network dependency
+- idempotency for retried writes
+- explicit database transaction boundaries
+- metrics for latency, saturation, and errors
+- health checks that reflect real dependencies
+
+## Scale the constraint
+
+Most APIs do not need microservices. Start with a modular deployment, measure its constraints, and split only when ownership or scaling characteristics make the boundary valuable.

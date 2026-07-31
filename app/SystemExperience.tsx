@@ -2,29 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import gsap from "gsap";
-
-function downloadResume() {
-  const resume = `ALI MOHAMMADI — BACKEND ENGINEER
-Baku · alimohammadi.8773@gmail.com · github.com/AliDvlpr
-
-PROFILE
-Backend engineer with 5+ years of experience building scalable Python systems with FastAPI, Django, PostgreSQL, Redis, Docker, and Go.
-
-EXPERIENCE
-2025—NOW  Senior Backend Engineer, QCode
-2024—NOW  Founder, Code Gap
-2023—NOW  Freelance Web Developer
-2019—2025 Backend Developer → Team Lead, Alborz Institute
-
-SELECTED WORK
-Django Store · Ecostore · Code Gap
-`;
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(new Blob([resume], { type: "text/plain;charset=utf-8" }));
-  link.download = "Ali-Mohammadi-Resume.txt";
-  link.click();
-  URL.revokeObjectURL(link.href);
-}
+import { trackEvent } from "@/lib/analytics-client";
 
 const commands = [
   { label: "Go to selected work", hint: "#work", action: () => document.querySelector("#work")?.scrollIntoView() },
@@ -32,7 +10,7 @@ const commands = [
   { label: "Go to experience", hint: "#experience", action: () => document.querySelector("#experience")?.scrollIntoView() },
   { label: "Open contact terminal", hint: "#contact", action: () => document.querySelector("#contact")?.scrollIntoView() },
   { label: "Open GitHub", hint: "↗", action: () => window.open("https://github.com/AliDvlpr", "_blank", "noopener,noreferrer") },
-  { label: "Download résumé", hint: "TXT", action: downloadResume },
+  { label: "Open résumé", hint: "/resume", action: () => { trackEvent("resume_downloaded", { source: "command_palette" }); window.location.href = "/resume"; } },
   { label: "Toggle theme", hint: "SOON", action: () => document.documentElement.classList.toggle("theme-preview") },
 ];
 
@@ -75,14 +53,19 @@ export function SystemChrome() {
       .to(element.querySelectorAll(".boot-line"), { opacity: 1, y: 0, stagger: 0.38, duration: 0.28, ease: "power2.out" })
       .to(".boot-progress i", { scaleX: 1, duration: 1.45, ease: "power2.inOut" }, 0)
       .to(element, { yPercent: -100, duration: 0.8, ease: "power4.inOut", delay: 0.25 });
-    return () => timeline.kill();
+    return () => {
+      timeline.kill();
+    };
   }, []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        setPaletteOpen((current) => !current);
+        setPaletteOpen((current) => {
+          if (!current) trackEvent("command_palette_opened");
+          return !current;
+        });
       }
       if (event.key === "Escape") setPaletteOpen(false);
     };
@@ -94,6 +77,7 @@ export function SystemChrome() {
     const command = filtered[index];
     if (!command) return;
     command.action();
+    trackEvent("terminal_command_used", { source: command.label });
     setPaletteOpen(false);
     setQuery("");
   }
@@ -110,7 +94,7 @@ export function SystemChrome() {
         <div className="boot-progress"><i /></div>
       </div>
       <div className="ambient-layer" aria-hidden="true"><i /><i /><i /></div>
-      <button className="palette-trigger" onClick={() => setPaletteOpen(true)} aria-label="Open command palette">
+      <button className="palette-trigger" onClick={() => { setPaletteOpen(true); trackEvent("command_palette_opened"); }} aria-label="Open command palette">
         <span>COMMAND</span><kbd>CTRL K</kbd>
       </button>
       {paletteOpen && (
