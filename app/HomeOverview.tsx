@@ -21,25 +21,56 @@ function Arrow() { return <span aria-hidden="true">↗</span>; }
 
 function ArchitectureMap() {
   const stages = [
-    ["01", "CLIENTS", "Web / Mobile / API", "◎"],
-    ["02", "EDGE", "Rate limit / routing", "⬡"],
-    ["03", "API LAYER", "FastAPI / Pydantic", "</>"],
-    ["04", "SERVICES", "Business logic / async", "◇"],
-    ["05", "DATA LAYER", "PostgreSQL / Redis", "▱"],
+    ["01", "CLIENTS", "Web / Mobile / API"],
+    ["02", "EDGE", "Rate limit / routing"],
+    ["03", "API LAYER", "FastAPI / Pydantic"],
+    ["04", "SERVICES", "Business logic / async"],
+    ["05", "DATA LAYER", "Persistence orchestration"],
   ];
   return <div className="architecture" aria-label="Animated backend architecture diagram">
     <div className="map-meta map-meta-top"><span>REQUESTS / S</span><strong>2,842</strong></div>
-    <svg className="map-lines" viewBox="0 0 660 680" aria-hidden="true">
-      <g className="route-lines" fill="none" stroke="#cfff35" strokeWidth="1.2">
-        <path className="route-primary-a" d="M280 95V180" /><path d="M300 95V180M320 95V180" />
-        <path className="route-primary-b" d="M300 250V330" /><path d="M280 250V330M320 250V330M280 400V480M300 400V480M320 400V480" />
-        <path className="route-cache" d="M365 215C470 215 410 330 545 330" /><path d="M365 365C470 365 430 505 545 505" />
+    <svg className="architecture-svg" viewBox="0 0 720 720" role="img" aria-labelledby="architecture-title architecture-description">
+      <title id="architecture-title">Backend request architecture</title>
+      <desc id="architecture-description">A request moves from clients through edge routing, the API layer, services, cache, database, and the data layer.</desc>
+      <g className="architecture-routes" fill="none">
+        <path d="M350 112V160M350 232V280M350 352V400M350 472V520" />
+        <path className="architecture-cache-route" d="M402 436C465 436 470 386 540 386" />
+        <path className="architecture-db-route" d="M402 556C465 556 475 536 540 536" />
+        <path className="architecture-main-motion" d="M350 76V556" opacity="0" />
       </g>
-      <g className="packets" fill="#d7ff3f"><circle className="packet packet-a" r="4" /><circle className="packet packet-b" r="3" /><circle className="packet packet-c" r="4" /></g>
+      {stages.map(([num, label, copy], index) => {
+        const y = 40 + index * 120;
+        return <g className="architecture-service" transform={`translate(0 ${y})`} key={num}>
+          <text className="architecture-index" x="66" y="29">{num}</text>
+          <text className="architecture-label" x="112" y="28">{label}</text>
+          <text className="architecture-copy" x="112" y="49">{copy}</text>
+          <rect x="300" y="0" width="102" height="72" rx="1" />
+          <rect className="architecture-node-core" x="337" y="23" width="28" height="28" rx="1" />
+          {index < stages.length - 1 && <circle className="architecture-anchor" cx="350" cy="72" r="3" />}
+        </g>;
+      })}
+      <g className="architecture-side-service">
+        <rect x="540" y="350" width="112" height="72" rx="1" />
+        <rect className="architecture-node-core is-cache" x="579" y="373" width="28" height="28" rx="1" />
+        <text className="architecture-label" x="540" y="445">CACHE</text>
+        <text className="architecture-copy" x="540" y="465">Redis · lookup</text>
+      </g>
+      <g className="architecture-side-service">
+        <rect x="540" y="500" width="112" height="72" rx="1" />
+        <circle className="architecture-db-core" cx="596" cy="536" r="13" />
+        <circle className="architecture-db-dot" cx="596" cy="536" r="5" />
+        <text className="architecture-label" x="540" y="595">DATABASE</text>
+        <text className="architecture-copy" x="540" y="615">PostgreSQL · query</text>
+      </g>
+      <g className="architecture-packets">
+        <circle className="packet packet-a" r="4" />
+        <circle className="packet packet-b" r="4" />
+        <circle className="packet packet-c" r="4" />
+      </g>
     </svg>
-    <div className="map-stages">{stages.map(([num, label, copy, icon]) => <div className="map-row" key={num}><span className="map-num">{num}</span><div className="map-label"><b>{label}</b><small>{copy}</small></div><div className="map-node">{icon}</div></div>)}</div>
-    <div className="side-node cache-node"><span>▰</span><div><b>CACHE</b><small>Redis</small></div></div>
-    <div className="side-node db-node"><span>◉</span><div><b>DATABASE</b><small>PostgreSQL</small></div></div>
+    <ol className="architecture-mobile-flow" aria-label="Backend service flow">
+      {[...stages, ["06", "CACHE", "Redis lookup"], ["07", "DATABASE", "PostgreSQL query"]].map(([num, label, copy]) => <li key={num}><span>{num}</span><i /><div><b>{label}</b><small>{copy}</small></div></li>)}
+    </ol>
     <div className="map-meta map-meta-bottom"><span>UPTIME</span><strong>99.98%</strong></div>
   </div>;
 }
@@ -56,10 +87,10 @@ export function HomeOverview({ articles, featuredProjects }: { articles: Article
         .from(".hero-kicker, .status-chip", { y: 16, opacity: 0, stagger: .08, duration: .55 })
         .from(".hero-name span", { yPercent: 110, stagger: .08, duration: .9 }, "-=.25")
         .from(".hero-role, .hero-copy, .hero-actions, .tech-strip", { y: 22, opacity: 0, stagger: .08, duration: .6 }, "-=.55")
-        .from(".map-row", { x: 28, opacity: 0, stagger: .07, duration: .5 }, "-=.8");
-      const routeA = scope.querySelector<SVGPathElement>(".route-primary-a");
-      const routeB = scope.querySelector<SVGPathElement>(".route-primary-b");
-      const routeCache = scope.querySelector<SVGPathElement>(".route-cache");
+        .from(".architecture-service, .architecture-side-service, .architecture-mobile-flow li", { x: 22, opacity: 0, stagger: .06, duration: .45 }, "-=.8");
+      const routeA = scope.querySelector<SVGPathElement>(".architecture-main-motion");
+      const routeB = scope.querySelector<SVGPathElement>(".architecture-cache-route");
+      const routeCache = scope.querySelector<SVGPathElement>(".architecture-db-route");
       const packetA = scope.querySelector<SVGCircleElement>(".packet-a");
       const packetB = scope.querySelector<SVGCircleElement>(".packet-b");
       const packetC = scope.querySelector<SVGCircleElement>(".packet-c");
