@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { MotionPathPlugin } from "gsap/MotionPathPlugin";
+import { lifecycleStageIndex, stageState } from "@/lib/motion/homepageStages";
+
+gsap.registerPlugin(ScrollTrigger, MotionPathPlugin);
 
 const lifecycle = [
   { name: "Client", meta: "GET /api/v1/projects", value: "TLS 1.3" },
@@ -33,33 +36,61 @@ function useVisible<T extends HTMLElement>() {
 export function RequestLifecycle() {
   const root = useRef<HTMLElement>(null);
   const [active, setActive] = useState(0);
+  const activeRef = useRef(0);
 
   useEffect(() => {
     const element = root.current;
     if (!element) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || window.innerWidth <= 760) return;
-    gsap.registerPlugin(ScrollTrigger, MotionPathPlugin);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
     const context = gsap.context(() => {
-      const nodes = gsap.utils.toArray<HTMLElement>("[data-request-node]");
-      gsap.set(".request-route-progress", { strokeDasharray: 1, strokeDashoffset: 1 });
-      const timeline = gsap.timeline({
-        scrollTrigger: {
-          trigger: element,
-          start: "top top",
-          end: "+=2600",
-          pin: ".request-stage",
-          scrub: 0.45,
-          invalidateOnRefresh: true,
-          onUpdate: (self) => setActive(Math.min(lifecycle.length - 1, Math.floor(self.progress * lifecycle.length))),
-        },
+      const publishStage = (index: number) => {
+        const step = lifecycle[index];
+        const ids = ["edge", "edge", "api", "api", "api", "cache", "database", "worker", "response"] as const;
+        window.dispatchEvent(new CustomEvent("homepage:lifecycle-stage", { detail: {
+          index: Math.min(5, Math.max(1, [1, 1, 2, 2, 2, 3, 4, 5, 5][index])),
+          stage: { id: ids[index], label: step.name.toUpperCase(), event: step.meta, service: step.name, status: step.value, latency: step.value, section: "snapshot", mobileLabel: step.name.toUpperCase() },
+        } }));
+      };
+      const media = gsap.matchMedia();
+      media.add({ desktop: "(min-width: 761px)", mobile: "(max-width: 760px)" }, (match) => {
+        let published = false;
+        const desktop = Boolean(match.conditions?.desktop);
+        const route = element.querySelector<SVGPathElement>(".request-route");
+        const progressRoute = element.querySelector<SVGPathElement>(".request-route-progress");
+        const packet = element.querySelector<SVGCircleElement>(".request-packet");
+        if (!route || !progressRoute || !packet) return;
+        gsap.set(progressRoute, { strokeDasharray: 1, strokeDashoffset: 1 });
+        const timeline = gsap.timeline({
+          scrollTrigger: {
+            trigger: element,
+            start: desktop ? "top top" : "top 75%",
+            end: desktop ? "+=2100" : "bottom 25%",
+            pin: desktop ? ".request-stage" : false,
+            scrub: desktop ? 0.35 : true,
+            anticipatePin: desktop ? 1 : 0,
+            invalidateOnRefresh: true,
+            onUpdate: (self) => {
+              if (!self.isActive && self.progress === 0) {
+                published = false;
+                return;
+              }
+              const next = lifecycleStageIndex(self.progress, lifecycle.length);
+              if (next === activeRef.current && published) return;
+              activeRef.current = next;
+              setActive(next);
+              publishStage(next);
+              published = true;
+            },
+          },
+        });
+        timeline
+          .to(progressRoute, { strokeDashoffset: 0, duration: 1, ease: "none" }, 0)
+          .to(packet, { motionPath: { path: route, align: route, alignOrigin: [0.5, 0.5] }, duration: 1, ease: "none" }, 0);
+        return () => timeline.kill();
       });
-      timeline
-        .to(".request-route-progress", { strokeDashoffset: 0, duration: 9, ease: "none" }, 0)
-        .to(".request-packet", { motionPath: { path: ".request-route", align: ".request-route", alignOrigin: [0.5, 0.5] }, duration: 9, ease: "none" }, 0);
-      nodes.forEach((node, index) => {
-        timeline.to(node, { "--node-energy": 1, color: "#d6ff35", duration: 0.35 }, index)
-          .to(node, { "--node-energy": 0.16, color: "#7f8378", duration: 0.35 }, index + 0.65);
-      });
+      return () => media.revert();
     }, element);
     return () => context.revert();
   }, []);
@@ -72,14 +103,14 @@ export function RequestLifecycle() {
           <div className="request-counter"><span>TRACE</span><b>req_7f2a9c</b><em>{String(active + 1).padStart(2, "0")} / 09</em></div>
         </div>
         <div className="request-map">
-          <svg viewBox="0 0 1280 410" aria-hidden="true">
-            <path className="request-route" d="M45 210 C120 210 110 80 205 80 S280 335 370 335 S440 80 530 80 S600 335 690 335 S760 80 850 80 S920 335 1010 335 S1095 210 1230 210" pathLength="1" />
-            <path className="request-route-progress" d="M45 210 C120 210 110 80 205 80 S280 335 370 335 S440 80 530 80 S600 335 690 335 S760 80 850 80 S920 335 1010 335 S1095 210 1230 210" pathLength="1" />
+          <svg viewBox="0 0 1280 410" aria-hidden="true" preserveAspectRatio="none">
+            <path className="request-route" d="M45 205 H1235" pathLength="1" />
+            <path className="request-route-progress" d="M45 205 H1235" pathLength="1" />
             <circle className="request-packet" cx="45" cy="210" r="7" />
           </svg>
           <div className="request-nodes">
             {lifecycle.map((step, index) => (
-              <article data-request-node className={index === active ? "is-current" : index < active ? "is-complete" : ""} key={step.name}>
+              <article data-request-node data-state={stageState(index, active)} className={index === active ? "is-current" : index < active ? "is-complete" : ""} key={step.name}>
                 <span>{String(index + 1).padStart(2, "0")}</span><i />
                 <div><h3>{step.name}</h3><p>{step.meta}</p><b>{step.value}</b></div>
               </article>

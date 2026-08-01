@@ -184,6 +184,7 @@ export function LiveSystems() {
   const [tick, setTick] = useState(0);
   const [logs, setLogs] = useState(() => logMessages.slice(0, 4));
   const [visible, setVisible] = useState(false);
+  const [pageVisible, setPageVisible] = useState(true);
 
   useEffect(() => {
     const element = root.current;
@@ -194,7 +195,14 @@ export function LiveSystems() {
   }, []);
 
   useEffect(() => {
-    if (!visible || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const update = () => setPageVisible(!document.hidden);
+    update();
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
+
+  useEffect(() => {
+    if (!visible || !pageVisible || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const metricTimer = window.setInterval(() => setTick((value) => value + 1), 1300);
     let index = 4;
     const logTimer = window.setInterval(() => {
@@ -202,7 +210,7 @@ export function LiveSystems() {
       index += 1;
     }, 1800);
     return () => { window.clearInterval(metricTimer); window.clearInterval(logTimer); };
-  }, [visible]);
+  }, [visible, pageVisible]);
 
   const metrics = [
     ["REQUESTS / SEC", `${(2842 + Math.sin(tick) * 94).toFixed(0)}`, "LIVE"],
@@ -218,7 +226,7 @@ export function LiveSystems() {
   ];
 
   return (
-    <section ref={root} className="section systems-section" id="systems" aria-labelledby="systems-title">
+    <section ref={root} className="section systems-section" id="systems" data-home-stage="5" aria-labelledby="systems-title">
       <div className="systems-heading reveal">
         <div><p>05 / SYSTEM EXPERIENCE</p><h2 id="systems-title">Live operational<br />intelligence.</h2></div>
         <div className="network-state"><i /> NETWORK ACTIVITY <b>STABLE</b></div>

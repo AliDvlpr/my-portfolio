@@ -4,10 +4,14 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 import type { Project } from "@/content/projects";
 import { experience } from "@/content/profile";
 import { LiveSystems } from "./SystemExperience";
 import { RequestLifecycle } from "./BackendMotionSystem";
+import { HomepageMotionSystem } from "./HomepageMotionSystem";
+
+gsap.registerPlugin(ScrollTrigger, MotionPathPlugin);
 
 type ArticlePreview = {
   slug: string; title: string; description: string; publishedAt: string; readingTime: number; tags: string[];
@@ -17,24 +21,56 @@ function Arrow() { return <span aria-hidden="true">↗</span>; }
 
 function ArchitectureMap() {
   const stages = [
-    ["01", "CLIENTS", "Web / Mobile / API", "◎"],
-    ["02", "EDGE", "Rate limit / routing", "⬡"],
-    ["03", "API LAYER", "FastAPI / Pydantic", "</>"],
-    ["04", "SERVICES", "Business logic / async", "◇"],
-    ["05", "DATA LAYER", "PostgreSQL / Redis", "▱"],
+    ["01", "CLIENTS", "Web / Mobile / API"],
+    ["02", "EDGE", "Rate limit / routing"],
+    ["03", "API LAYER", "FastAPI / Pydantic"],
+    ["04", "SERVICES", "Business logic / async"],
+    ["05", "DATA LAYER", "Persistence orchestration"],
   ];
   return <div className="architecture" aria-label="Animated backend architecture diagram">
     <div className="map-meta map-meta-top"><span>REQUESTS / S</span><strong>2,842</strong></div>
-    <svg className="map-lines" viewBox="0 0 660 680" aria-hidden="true">
-      <g className="route-lines" fill="none" stroke="#cfff35" strokeWidth="1.2">
-        <path d="M280 95V180M300 95V180M320 95V180M280 250V330M300 250V330M320 250V330M280 400V480M300 400V480M320 400V480" />
-        <path d="M365 215C470 215 410 330 545 330M365 365C470 365 430 505 545 505" />
+    <svg className="architecture-svg" viewBox="0 0 720 720" role="img" aria-labelledby="architecture-title architecture-description">
+      <title id="architecture-title">Backend request architecture</title>
+      <desc id="architecture-description">A request moves from clients through edge routing, the API layer, services, cache, database, and the data layer.</desc>
+      <g className="architecture-routes" fill="none">
+        <path d="M350 112V160M350 232V280M350 352V400M350 472V520" />
+        <path className="architecture-cache-route" d="M402 436C465 436 470 386 540 386" />
+        <path className="architecture-db-route" d="M402 556C465 556 475 536 540 536" />
+        <path className="architecture-main-motion" d="M350 76V556" opacity="0" />
       </g>
-      <g className="packets" fill="#d7ff3f"><circle className="packet packet-a" cx="280" cy="130" r="4" /><circle className="packet packet-b" cx="300" cy="290" r="3" /><circle className="packet packet-c" cx="430" cy="330" r="4" /></g>
+      {stages.map(([num, label, copy], index) => {
+        const y = 40 + index * 120;
+        return <g className="architecture-service" transform={`translate(0 ${y})`} key={num}>
+          <text className="architecture-index" x="66" y="29">{num}</text>
+          <text className="architecture-label" x="112" y="28">{label}</text>
+          <text className="architecture-copy" x="112" y="49">{copy}</text>
+          <rect x="300" y="0" width="102" height="72" rx="1" />
+          <rect className="architecture-node-core" x="337" y="23" width="28" height="28" rx="1" />
+          {index < stages.length - 1 && <circle className="architecture-anchor" cx="350" cy="72" r="3" />}
+        </g>;
+      })}
+      <g className="architecture-side-service">
+        <rect x="540" y="350" width="112" height="72" rx="1" />
+        <rect className="architecture-node-core is-cache" x="579" y="373" width="28" height="28" rx="1" />
+        <text className="architecture-label" x="540" y="445">CACHE</text>
+        <text className="architecture-copy" x="540" y="465">Redis · lookup</text>
+      </g>
+      <g className="architecture-side-service">
+        <rect x="540" y="500" width="112" height="72" rx="1" />
+        <circle className="architecture-db-core" cx="596" cy="536" r="13" />
+        <circle className="architecture-db-dot" cx="596" cy="536" r="5" />
+        <text className="architecture-label" x="540" y="595">DATABASE</text>
+        <text className="architecture-copy" x="540" y="615">PostgreSQL · query</text>
+      </g>
+      <g className="architecture-packets">
+        <circle className="packet packet-a" r="4" />
+        <circle className="packet packet-b" r="4" />
+        <circle className="packet packet-c" r="4" />
+      </g>
     </svg>
-    <div className="map-stages">{stages.map(([num, label, copy, icon]) => <div className="map-row" key={num}><span className="map-num">{num}</span><div className="map-label"><b>{label}</b><small>{copy}</small></div><div className="map-node">{icon}</div></div>)}</div>
-    <div className="side-node cache-node"><span>▰</span><div><b>CACHE</b><small>Redis</small></div></div>
-    <div className="side-node db-node"><span>◉</span><div><b>DATABASE</b><small>PostgreSQL</small></div></div>
+    <ol className="architecture-mobile-flow" aria-label="Backend service flow">
+      {[...stages, ["06", "CACHE", "Redis lookup"], ["07", "DATABASE", "PostgreSQL query"]].map(([num, label, copy]) => <li key={num}><span>{num}</span><i /><div><b>{label}</b><small>{copy}</small></div></li>)}
+    </ol>
     <div className="map-meta map-meta-bottom"><span>UPTIME</span><strong>99.98%</strong></div>
   </div>;
 }
@@ -42,23 +78,44 @@ function ArchitectureMap() {
 export function HomeOverview({ articles, featuredProjects }: { articles: ArticlePreview[]; featuredProjects: Project[] }) {
   const root = useRef<HTMLElement>(null);
   useEffect(() => {
-    gsap.registerPlugin(ScrollTrigger);
+    const scope = root.current;
+    if (!scope) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let removeVisibilityListener: () => void = () => {};
     const context = gsap.context(() => {
       gsap.timeline({ defaults: { ease: "power4.out" } })
         .from(".hero-kicker, .status-chip", { y: 16, opacity: 0, stagger: .08, duration: .55 })
         .from(".hero-name span", { yPercent: 110, stagger: .08, duration: .9 }, "-=.25")
         .from(".hero-role, .hero-copy, .hero-actions, .tech-strip", { y: 22, opacity: 0, stagger: .08, duration: .6 }, "-=.55")
-        .from(".map-row", { x: 28, opacity: 0, stagger: .07, duration: .5 }, "-=.8");
-      const idle = gsap.timeline({ repeat: -1 }).to(".packet-a", { y: 85, duration: 1.8, ease: "none" }).to(".packet-b", { y: 80, duration: 2.2, ease: "none" }, 0).to(".packet-c", { x: 100, duration: 2.4, ease: "none" }, 0);
-      ScrollTrigger.create({ trigger: ".architecture", start: "top bottom", end: "bottom top", onLeave: () => idle.pause(), onEnterBack: () => idle.play() });
-      gsap.utils.toArray<HTMLElement>(".home-reveal").forEach((element) => gsap.from(element, { y: 36, opacity: 0, duration: .7, scrollTrigger: { trigger: element, start: "top 88%", once: true } }));
+        .from(".architecture-service, .architecture-side-service, .architecture-mobile-flow li", { x: 22, opacity: 0, stagger: .06, duration: .45 }, "-=.8");
+      const routeA = scope.querySelector<SVGPathElement>(".architecture-main-motion");
+      const routeB = scope.querySelector<SVGPathElement>(".architecture-cache-route");
+      const routeCache = scope.querySelector<SVGPathElement>(".architecture-db-route");
+      const packetA = scope.querySelector<SVGCircleElement>(".packet-a");
+      const packetB = scope.querySelector<SVGCircleElement>(".packet-b");
+      const packetC = scope.querySelector<SVGCircleElement>(".packet-c");
+      const architecture = scope.querySelector<HTMLElement>(".architecture");
+      const idle = gsap.timeline({ repeat: -1, repeatDelay: .3 });
+      if (routeA && routeB && routeCache && packetA && packetB && packetC) {
+        idle
+          .to(packetA, { motionPath: { path: routeA, align: routeA, alignOrigin: [.5, .5] }, duration: 1.8, ease: "none" })
+          .to(packetB, { motionPath: { path: routeB, align: routeB, alignOrigin: [.5, .5] }, duration: 2.1, ease: "none" }, 0)
+          .to(packetC, { motionPath: { path: routeCache, align: routeCache, alignOrigin: [.5, .5] }, duration: 2.4, ease: "none" }, 0);
+      }
+      if (architecture) ScrollTrigger.create({ trigger: architecture, start: "top bottom", end: "bottom top", onLeave: () => idle.pause(), onEnterBack: () => idle.play() });
+      const onVisibility = () => document.hidden ? idle.pause() : idle.play();
+      document.addEventListener("visibilitychange", onVisibility);
+      removeVisibilityListener = () => document.removeEventListener("visibilitychange", onVisibility);
     }, root);
-    return () => context.revert();
+    return () => {
+      removeVisibilityListener();
+      context.revert();
+    };
   }, []);
 
   return <main ref={root} id="main-content" className="home-overview">
-    <section className="hero" id="top">
+    <HomepageMotionSystem />
+    <section className="hero" id="top" data-home-stage="0">
       <div className="hero-copy-column">
         <div className="status-chip"><span>SYSTEM STATUS</span><b><i /> AVAILABLE FOR SELECT PROJECTS</b></div>
         <p className="hero-kicker">BACKEND ENGINEER / BAKU</p>
@@ -72,9 +129,11 @@ export function HomeOverview({ articles, featuredProjects }: { articles: Article
       <a className="scroll-indicator" href="#snapshot"><span>SCROLL</span><i />01 / 06</a>
     </section>
 
-    <section id="snapshot" className="home-system-snapshot"><RequestLifecycle /></section>
+    <section id="snapshot" className="home-system-snapshot" data-home-stage="1"><RequestLifecycle /></section>
 
-    <section className="section work-section home-reveal">
+    <LiveSystems />
+
+    <section className="section work-section home-reveal" id="projects-stage" data-home-stage="6">
       <div className="section-heading"><p>02 / FEATURED SERVICES</p><h2>Systems built to<br />hold their shape.</h2><Link href="/projects">Explore all projects <Arrow /></Link></div>
       <div className="project-grid">{featuredProjects.map((project) => <Link className="project-card" href={`/projects/${project.slug}`} key={project.slug}>
         <div className="project-top"><span>{project.index}</span><b><i /> HEALTHY</b><Arrow /></div>
@@ -84,21 +143,20 @@ export function HomeOverview({ articles, featuredProjects }: { articles: Article
       </Link>)}</div>
     </section>
 
-    <section className="section home-experience-preview home-reveal">
+    <section className="section home-experience-preview home-reveal" id="experience-stage" data-home-stage="7">
       <div className="section-heading"><p>03 / SELECTED EXPERIENCE</p><h2>Implementation<br />to architecture.</h2><Link href="/about">Read full background <Arrow /></Link></div>
       <div className="timeline">{experience.slice(0, 2).map((item) => <article className="timeline-row" key={item.period + item.company}><i className="timeline-node" /><p className="timeline-period">{item.period}</p><div><h3>{item.role}</h3><p className="timeline-company">{item.company}</p></div><p className="timeline-detail">{item.detail}</p><span className="timeline-tech">{item.tech.join(" / ")}</span></article>)}</div>
     </section>
 
-    <section className="section home-writing home-reveal">
+    <section className="section home-writing home-reveal" id="writing-stage" data-home-stage="9">
       <div className="section-heading"><p>04 / LATEST WRITING</p><h2>Engineering notes<br />from production.</h2><Link href="/blog">View engineering notes <Arrow /></Link></div>
       <div className="home-article-grid">{articles.map((article) => <Link href={`/blog/${article.slug}`} key={article.slug}><p>{article.tags.join(" / ")}</p><h3>{article.title}</h3><span>{article.description}</span><b>{article.readingTime} MIN READ <Arrow /></b></Link>)}</div>
     </section>
 
-    <LiveSystems />
-
-    <section className="home-gateways home-reveal">
-      <Link href="/uses"><span>MODULE / TOOLBOX</span><h2>Current stack and workflow.</h2><b>Inspect toolbox <Arrow /></b></Link>
-      <Link href="/contact"><span>ENDPOINT / CONTACT</span><h2>Have a system worth building?</h2><b>Open terminal contact <Arrow /></b></Link>
+    <section className="home-gateways home-reveal" id="gateway-stage" data-home-stage="10">
+      <Link id="toolbox-stage" href="/uses"><span>MODULE / TOOLBOX</span><h2>Current stack and workflow.</h2><b>Inspect toolbox <Arrow /></b></Link>
+      <Link id="contact-stage" href="/contact"><span>ENDPOINT / CONTACT</span><h2>Have a system worth building?</h2><b>Open terminal contact <Arrow /></b></Link>
     </section>
+    <div className="home-response" id="response-stage" data-home-stage="11"><span>RESPONSE</span><strong>200 OK</strong><p>connection reusable · total latency 42ms</p></div>
   </main>;
 }
