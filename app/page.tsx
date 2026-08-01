@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getAllBlogPosts } from "@/lib/content";
+import { getFeaturedProjects, getPublishedBlogPosts } from "@/lib/cms/repository";
 import { HomeOverview } from "./HomeOverview";
 
 export const metadata: Metadata = {
@@ -9,9 +9,10 @@ export const metadata: Metadata = {
   openGraph: { title: "Ali Mohammadi — Backend Engineer", description: "Backend systems designed for clarity, reliability, and growth.", url: "/", type: "profile" },
 };
 
-export default function Home() {
-  const articles = getAllBlogPosts().slice(0, 3).map(({ slug, title, description, publishedAt, readingTime, tags }) => ({
+export default async function Home() {
+  const [posts, featuredProjects] = await Promise.all([getPublishedBlogPosts(), getFeaturedProjects()]);
+  const articles = posts.slice(0, 3).map(({ slug, title, description, publishedAt, readingTime, tags }) => ({
     slug, title, description, publishedAt, readingTime, tags,
   }));
-  return <HomeOverview articles={articles} />;
+  return <HomeOverview articles={articles} featuredProjects={featuredProjects} />;
 }

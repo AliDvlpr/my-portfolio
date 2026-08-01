@@ -8,8 +8,6 @@ import { scenarioLabels, selectableScenarios } from "@/lib/simulation/scenarios"
 import { getPresetServices, serviceRegistry } from "@/lib/simulation/services";
 import { simulationStore, useSimulationState } from "@/lib/simulation/store";
 import type { ArchitecturePreset, SimulationScenario, TraceRecord } from "@/lib/simulation/types";
-import { runTerminalCommand } from "@/lib/terminal/commands";
-import { getTerminalCompletions } from "@/lib/terminal/registry";
 
 const presets: { id: ArchitecturePreset; title: string; description: string }[] = [
   { id: "simple-rest", title: "Simple REST API", description: "A direct request path with minimal infrastructure." },
@@ -24,7 +22,6 @@ const moduleCards = [
   { title: "API Explorer", href: "/lab/api", status: "ONLINE", shortcut: "Ctrl+K", description: "Safe simulated endpoints backed by real portfolio content." },
   { title: "Architecture Playground", href: "/lab/architecture", status: "ONLINE", shortcut: "Shift+A", description: "Curated backend presets with selected failure scenarios." },
   { title: "Observability", href: "/lab/observability", status: "ONLINE", shortcut: "Shift+O", description: "Metrics, traces, structured logs, and service health." },
-  { title: "Terminal", href: "/terminal", status: "ONLINE", shortcut: "`", description: "A typed developer console with sandboxed commands and suggestions." },
 ];
 
 export function LabIndex() {
@@ -275,80 +272,5 @@ export function ObservabilityDashboard() {
         </div>
       </section>
     </div>
-  </div>;
-}
-
-export function TerminalConsole() {
-  const state = useSimulationState();
-  const [input, setInput] = useState("");
-  const [history, setHistory] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const [output, setOutput] = useState<string[]>([
-    "Developer console ready.",
-    "Type help to inspect available commands.",
-  ]);
-  const completions = getTerminalCompletions(input);
-
-  function submit(raw = input) {
-    const result = runTerminalCommand(raw);
-    if (result.kind === "text" && result.output === "__CLEAR__") {
-      setOutput([]);
-    } else {
-      setOutput((current) => [...current, `$ ${raw}`, result.output]);
-    }
-    if (result.kind === "navigation") {
-      window.location.href = result.href;
-    }
-    if (result.kind === "action") {
-      result.run();
-    }
-    setHistory((current) => [...current, raw]);
-    setHistoryIndex(-1);
-    setInput("");
-  }
-
-  return <div className="terminal-console-route">
-    <section className="lab-panel terminal-console-panel">
-      <div className="lab-panel-head"><span>DEVELOPER CONSOLE</span><b>{state.paused ? "PAUSED" : "LIVE"}</b></div>
-      <div className="terminal-console-output" role="log" aria-live="polite">
-        {output.map((line, index) => <pre key={`${line}-${index}`}>{line}</pre>)}
-      </div>
-      <label className="terminal-console-input">
-        <span>$</span>
-        <input
-          aria-label="Terminal command input"
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              if (input.trim()) submit();
-            }
-            if (event.key === "ArrowUp" && history.length) {
-              event.preventDefault();
-              const nextIndex = historyIndex < 0 ? history.length - 1 : Math.max(0, historyIndex - 1);
-              setHistoryIndex(nextIndex);
-              setInput(history[nextIndex] ?? "");
-            }
-            if (event.key === "ArrowDown" && history.length) {
-              event.preventDefault();
-              const nextIndex = historyIndex < 0 ? -1 : Math.min(history.length - 1, historyIndex + 1);
-              setHistoryIndex(nextIndex);
-              setInput(nextIndex === -1 ? "" : history[nextIndex] ?? "");
-            }
-            if (event.key === "Tab") {
-              event.preventDefault();
-              if (completions[0]) setInput(completions[0]);
-            }
-          }}
-          placeholder="help"
-        />
-          <button type="button" onClick={() => input.trim() && submit()}>RUN</button>
-      </label>
-      <div className="terminal-console-hints">
-        <span>COMPLETIONS: {completions.slice(0, 4).join(" · ") || "none"}</span>
-        <span>HISTORY: {history.length}</span>
-      </div>
-    </section>
   </div>;
 }

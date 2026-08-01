@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getAllBlogPosts, getBlogPost, getRelatedPosts } from "@/lib/content";
+import { getPublishedBlogPost, getPublishedBlogPosts } from "@/lib/cms/repository";
 import { formatDate } from "../page";
 import { Breadcrumbs } from "@/app/PagePrimitives";
 import { SafeArticleBody } from "../SafeArticleBody";
 import { ArticleTracker } from "./ArticleTracker";
 
-export function generateStaticParams() {
-  return getAllBlogPosts().map(({ slug }) => ({ slug }));
+export async function generateStaticParams() {
+  return (await getPublishedBlogPosts()).map(({ slug }) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const post = await getPublishedBlogPost(slug);
   if (!post) return {};
   return {
     title: `${post.title} | Ali Mohammadi`,
@@ -26,13 +26,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const post = getBlogPost(slug);
+  const post = await getPublishedBlogPost(slug);
   if (!post) notFound();
-  const posts = getAllBlogPosts();
+  const posts = await getPublishedBlogPosts();
   const index = posts.findIndex((candidate) => candidate.slug === post.slug);
   const previous = posts[index + 1];
   const next = posts[index - 1];
-  const related = getRelatedPosts(post);
+  const related = posts.filter((candidate) => candidate.slug !== post.slug).map((candidate) => ({ candidate, score: candidate.tags.filter((tag) => post.tags.includes(tag)).length })).filter(({ score }) => score > 0).sort((a, b) => b.score - a.score).slice(0, 2).map(({ candidate }) => candidate);
   const jsonLd = {
     "@context": "https://schema.org", "@type": "TechArticle", headline: post.title,
     description: post.description, datePublished: post.publishedAt, dateModified: post.updatedAt ?? post.publishedAt,

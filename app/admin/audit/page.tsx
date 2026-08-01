@@ -1,0 +1,7 @@
+import type { Metadata } from "next";
+import { requireAdminSession } from "@/lib/auth";
+import { listAudit } from "@/lib/cms/repository";
+import { AdminNav } from "../AdminNav";
+export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Audit | AliDvlpr CMS", robots: { index: false, follow: false } };
+export default async function AdminAuditPage() { const session = await requireAdminSession(); let events: Awaited<ReturnType<typeof listAudit>> = []; let unavailable = false; try { events = await listAudit(); } catch { unavailable = true; } return <main className="admin-page" id="main-content"><AdminNav email={session.user.email} /><section className="admin-heading"><p>CONTROL PLANE / AUDIT</p><h1>Audit history.</h1><span>SAFE METADATA ONLY</span></section><section className="admin-panel"><div className="admin-panel-head"><h2>Recent admin actions</h2><span>{events.length} EVENTS</span></div>{unavailable ? <div className="admin-empty-state"><strong>Audit data unavailable</strong><p>Verify the local D1 migration.</p></div> : <div className="admin-table-wrap"><table><thead><tr><th>TIME</th><th>ACTION</th><th>ENTITY</th><th>ID</th><th>ACTOR</th></tr></thead><tbody>{events.map((event) => <tr key={event.id}><td>{event.createdAt.replace("T", " ").slice(0, 19)}</td><td>{event.action}</td><td>{event.entityType}</td><td><code>{event.entityId}</code></td><td>{event.actor}</td></tr>)}</tbody></table></div>}</section></main>; }

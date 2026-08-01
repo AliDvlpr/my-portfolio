@@ -1,0 +1,15 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { requireAdminSession } from "@/lib/auth";
+import { listAdminProjects } from "@/lib/cms/repository";
+import { AdminNav } from "../AdminNav";
+import { ContentActions } from "../ContentActions";
+import { ProjectOrderButtons } from "../ProjectOrderButtons";
+
+export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Projects | AliDvlpr CMS", robots: { index: false, follow: false } };
+export default async function AdminProjectsPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string }> }) {
+  const session = await requireAdminSession(); const params = await searchParams; let projects: Awaited<ReturnType<typeof listAdminProjects>> = []; let unavailable = false; try { projects = await listAdminProjects(); } catch { unavailable = true; }
+  const query = (params.q ?? "").toLowerCase(); const filtered = projects.filter((project) => (!query || `${project.title} ${project.slug} ${project.stack.join(" ")}`.toLowerCase().includes(query)) && (!params.status || project.status === params.status));
+  return <main className="admin-page" id="main-content"><AdminNav email={session.user.email} /><section className="admin-heading"><p>CONTENT / PROJECTS</p><h1>Projects.</h1><Link className="admin-primary-link" href="/admin/projects/new">NEW PROJECT</Link></section><form className="cms-filter-bar"><label>Search<input name="q" defaultValue={params.q} /></label><label>Status<select name="status" defaultValue={params.status ?? ""}><option value="">All</option><option value="draft">Draft</option><option value="published">Published</option><option value="archived">Archived</option></select></label><button>FILTER</button></form><section className="admin-panel"><div className="admin-panel-head"><h2>Project registry</h2><span>{filtered.length} PROJECTS</span></div>{unavailable ? <div className="admin-empty-state"><strong>CMS tables unavailable</strong><p>Apply migration 0001 and import existing project content.</p></div> : filtered.length ? <div className="admin-table-wrap"><table><thead><tr><th>ORDER</th><th>TITLE</th><th>STATUS</th><th>TYPE</th><th>STACK</th><th>UPDATED</th><th>ACTIONS</th></tr></thead><tbody>{filtered.map((project, index) => <tr key={project.id}><td>{project.sortOrder}<ProjectOrderButtons current={project} previous={filtered[index - 1]} next={filtered[index + 1]} /></td><td><b>{project.title}</b><small>/{project.slug}</small></td><td>{project.status}</td><td>{project.projectType}</td><td>{project.stack.join(", ")}</td><td>{project.updatedAt.slice(0, 10)}</td><td><ContentActions type="projects" id={project.id} slug={project.slug} status={project.status} editHref={`/admin/projects/${project.id}/edit`} previewHref={`/admin/preview/projects/${project.id}`} /></td></tr>)}</tbody></table></div> : <div className="admin-empty-state"><strong>No projects found</strong><p>Create a project or import the existing registry.</p></div>}</section></main>;
+}
