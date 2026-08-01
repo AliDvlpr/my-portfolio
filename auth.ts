@@ -7,7 +7,7 @@ const CredentialsProvider = require("next-auth/providers/credentials").default a
   name: string;
   credentials: Record<string, { label: string; type: string }>;
   authorize: (credentials: Record<string, string> | undefined) => Promise<{ id: string; email: string; name: string; role: string } | null>;
-}) => any;
+}) => NextAuthOptions["providers"][number];
 
 const DEFAULT_ADMIN_EMAIL = "alimohammadi.8773@gmail.com";
 const DEFAULT_ADMIN_PASSWORD = "AliAdmin!2026";

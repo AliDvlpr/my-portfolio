@@ -110,8 +110,8 @@ export function SystemChrome() {
 
   return (
     <>
-      <div className="global-loader" ref={loader} role="status" aria-label="Portfolio loading">
-        <div className="boot-mark">AM<span>_SYS</span></div>
+      <div className="global-loader" ref={loader} role="status" aria-label="AliDvlpr portfolio loading">
+        <div className="boot-mark">ALIDVLPR<span>_SYS</span></div>
         <div className="boot-copy">
           {["Initializing services...", "Loading architecture...", "Connecting database...", "Ready."].map((line) => (
             <p className="boot-line" key={line}><span>›</span>{line}</p>

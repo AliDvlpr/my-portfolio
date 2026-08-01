@@ -74,7 +74,7 @@ def footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Courier", 7)
     canvas.setFillColor(MUTED)
-    canvas.drawString(20 * mm, 12 * mm, "ALI.DEV / BACKEND ENGINEER")
+    canvas.drawString(20 * mm, 12 * mm, "ALIDVLPR / BACKEND ENGINEER")
     canvas.drawRightString(190 * mm, 12 * mm, f"PAGE {doc.page}")
     canvas.restoreState()
 
