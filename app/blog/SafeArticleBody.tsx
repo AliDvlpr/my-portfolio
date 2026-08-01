@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import Image from "next/image";
 import { slugify } from "@/lib/content";
 import { CopyCodeButton } from "./CopyCodeButton";
 
@@ -6,7 +7,9 @@ type Block =
   | { type: "heading"; level: 2 | 3; text: string }
   | { type: "paragraph"; text: string }
   | { type: "code"; language: string; code: string }
-  | { type: "list"; items: string[] };
+  | { type: "list"; items: string[] }
+  | { type: "blockquote"; text: string }
+  | { type: "image"; alt: string; src: string };
 
 function parse(source: string): Block[] {
   const lines = source.split(/\r?\n/);
@@ -28,6 +31,13 @@ function parse(source: string): Block[] {
         index += 1;
       }
       blocks.push({ type: "code", language, code: code.join("\n") });
+    } else if (/^!\[[^\]]*\]\(([^)]+)\)$/.test(line.trim())) {
+      flushParagraph();
+      const image = line.trim().match(/^!\[([^\]]*)\]\(([^)]+)\)$/)!;
+      if (image[2].startsWith("/api/media/") || image[2].startsWith("https://")) blocks.push({ type: "image", alt: image[1], src: image[2] });
+    } else if (/^>\s?/.test(line)) {
+      flushParagraph();
+      blocks.push({ type: "blockquote", text: line.replace(/^>\s?/, "") });
     } else if (/^##\s/.test(line)) {
       flushParagraph();
       blocks.push({ type: "heading", level: 2, text: line.replace(/^##\s+/, "") });
@@ -53,7 +63,12 @@ function parse(source: string): Block[] {
 }
 
 function InlineText({ value }: { value: string }) {
-  return <>{value.split(/(`[^`]+`)/g).map((token, index) => token.startsWith("`") ? <code key={index}>{token.slice(1, -1)}</code> : <Fragment key={index}>{token}</Fragment>)}</>;
+  return <>{value.split(/(`[^`]+`|\[[^\]]+\]\([^)]+\))/g).map((token, index) => {
+    if (token.startsWith("`")) return <code key={index}>{token.slice(1, -1)}</code>;
+    const link = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (link && (link[2].startsWith("/") || link[2].startsWith("https://"))) return <a href={link[2]} key={index} rel={link[2].startsWith("https://") ? "noreferrer" : undefined}>{link[1]}</a>;
+    return <Fragment key={index}>{token}</Fragment>;
+  })}</>;
 }
 
 function HighlightedCode({ code }: { code: string }) {
@@ -73,6 +88,8 @@ export function SafeArticleBody({ source }: { source: string }) {
     }
     if (block.type === "code") return <div className="article-code" key={`code-${index}`}><div><span>CODE / {block.language || "TEXT"}</span><CopyCodeButton code={block.code} /></div><pre><code><HighlightedCode code={block.code} /></code></pre></div>;
     if (block.type === "list") return <ul key={`list-${index}`}>{block.items.map((item) => <li key={item}><InlineText value={item} /></li>)}</ul>;
+    if (block.type === "blockquote") return <blockquote key={`quote-${index}`}><InlineText value={block.text} /></blockquote>;
+    if (block.type === "image") return <figure key={`image-${index}`}><Image src={block.src} alt={block.alt} width={1200} height={750} unoptimized /><figcaption>{block.alt}</figcaption></figure>;
     return <p key={`paragraph-${index}`}><InlineText value={block.text} /></p>;
   })}</>;
 }

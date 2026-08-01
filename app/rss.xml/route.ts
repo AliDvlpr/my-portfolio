@@ -1,9 +1,9 @@
-import { getAllBlogPosts } from "@/lib/content";
+import { getPublishedBlogPosts } from "@/lib/cms/repository";
 import { getServerEnv } from "@/lib/env";
 
-export function GET() {
+export async function GET() {
   const base = getServerEnv().SITE_URL.replace(/\/$/, "");
-  const posts = getAllBlogPosts();
+  const posts = await getPublishedBlogPosts();
   const xml = `<?xml version="1.0" encoding="UTF-8" ?><rss version="2.0"><channel>
 <title>Ali Mohammadi — Backend Engineering Notes</title><link>${escapeXml(`${base}/blog`)}</link>
 <description>Production-minded notes on backend architecture and reliability.</description><language>en</language>

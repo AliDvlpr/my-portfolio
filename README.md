@@ -2,6 +2,43 @@
 
 A React 19 portfolio running on Vinext and Cloudflare Workers. The public experience combines the Phase 1 system interface and Phase 2 backend motion system with a production contact pipeline, validated MDX content, project case studies, a protected owner console, privacy-conscious analytics, and D1 persistence.
 
+## Phase 7 CMS
+
+The authenticated `/admin` area is a single-owner content control plane. Editable posts and projects live in D1; the checked-in MDX and TypeScript sources are import-only fallback content and are never mutated at runtime. Public routes prefer published D1 records and fall back to source content only while the CMS migration is unavailable or empty.
+
+```text
+Admin session
+  ├─ Posts → D1 blog_posts + normalized tags
+  ├─ Projects → D1 cms_projects + project_technologies
+  ├─ Media → R2 MEDIA bucket + D1 metadata
+  ├─ Revisions → immutable content_revisions snapshots
+  └─ Operations → privacy-safe admin_audit events
+
+Public routes
+  ├─ /blog + /blog/:slug → published posts only
+  ├─ /projects + /projects/:slug → published projects only
+  ├─ / → published featured content
+  └─ sitemap + RSS → published content only
+```
+
+Apply migrations in order. For local development, the helper config uses the same D1 and R2 binding names as the Vite preview:
+
+```bash
+npx wrangler d1 execute DB --local --config wrangler.local.jsonc --persist-to .wrangler/state --file drizzle/0000_cool_clint_barton.sql --yes
+npm run db:cms:migrate:local
+npm run dev
+```
+
+Sign in, open `/admin`, and select **Import existing content**. The import is idempotent by slug and seeds existing MDX posts and typed project records. Production migrations must be applied explicitly to the production D1 database before deployment; never use automatic destructive schema synchronization. To roll back the application, deploy the previous Worker version and retain the additive CMS tables. Export D1 before destructive cleanup.
+
+Content operations include draft save, preview, immediate publishing, request-time scheduled publishing in UTC, unpublishing, archiving, duplication, permanent deletion confirmation, project ordering, immutable revisions, revision restore, and optimistic concurrency via the `version` column. A stale write returns `409 Conflict`. Publishing and content mutations revalidate the homepage, indexes, detail routes, RSS, and sitemap.
+
+Media uses the `MEDIA` R2 binding. Uploads are limited to JPEG, PNG, WebP, and AVIF under 8 MB; both MIME type and file signatures are checked. Alt text is mandatory. Relational metadata is stored in D1, while binary data stays in R2. Production must provision an R2 bucket named for the deployment and bind it as `MEDIA`.
+
+Draft previews are under `/admin/preview/*`, require the owner session, set no-index metadata, and never enter public route queries, RSS, or sitemap. Stored MDX rejects imports, exports, and arbitrary React components; the renderer exposes only controlled Markdown structures.
+
+Known limitations: scheduling uses an idempotent request-time publisher rather than a cron trigger, media dimensions are populated with safe display defaults until an image-metadata worker is added, and source fallback remains enabled to protect first deployment before import. Back up D1 and R2 together for a complete CMS restore.
+
 ## Route architecture
 
 ```text

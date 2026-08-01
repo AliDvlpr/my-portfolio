@@ -8,6 +8,7 @@ import { projects } from "@/content/projects";
 import { simulationStore } from "@/lib/simulation/store";
 
 type Command = { label: string; aliases: string; hint: string; action: () => void };
+type TerminalLine = { id: number; tone?: "command" | "error"; text: string };
 
 const logMessages = [
   ["INFO", "Request accepted", "GET /api/v1/projects"],
@@ -35,14 +36,14 @@ export function SystemChrome() {
   const previousFocus = useRef<HTMLElement | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [active, setActive] = useState(0);
+  const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([]);
+  const terminalLineId = useRef(0);
   const commands = useMemo<Command[]>(() => [
     ...publicRoutes.map((route) => ({ label: route.command, aliases: `${route.label} ${route.module}`, hint: route.href, action: () => { window.location.href = route.href; } })),
     ...projects.map((project) => ({ label: `open project ${project.title}`, aliases: `${project.slug} ${project.stack.join(" ")}`, hint: `/projects/${project.slug}`, action: () => { window.location.href = `/projects/${project.slug}`; } })),
     { label: "open API explorer", aliases: "lab api explorer developer portal", hint: "/lab/api", action: () => { window.location.href = "/lab/api"; } },
     { label: "open architecture playground", aliases: "lab architecture presets", hint: "/lab/architecture", action: () => { window.location.href = "/lab/architecture"; } },
     { label: "open observability", aliases: "lab metrics traces logs", hint: "/lab/observability", action: () => { window.location.href = "/lab/observability"; } },
-    { label: "open terminal", aliases: "developer console terminal", hint: "/terminal", action: () => { window.location.href = "/terminal"; } },
     { label: "simulate cache miss", aliases: "failure scenario redis miss", hint: "ACTION", action: () => simulationStore.setScenario("cache-miss") },
     { label: "simulate database delay", aliases: "slow database scenario", hint: "ACTION", action: () => simulationStore.setScenario("slow-database") },
     { label: "reset simulation", aliases: "stable reset observability", hint: "RESET", action: () => simulationStore.reset() },
@@ -51,8 +52,6 @@ export function SystemChrome() {
     { label: "toggle motion", aliases: "reduced animation", hint: "MOTION", action: () => document.documentElement.classList.toggle("motion-paused") },
     { label: "toggle logs", aliases: "stream console", hint: "LOGS", action: () => document.documentElement.classList.toggle("logs-hidden") },
   ], []);
-  const filtered = useMemo(() => commands.filter((command) => fuzzyMatch(`${command.label} ${command.aliases} ${command.hint}`, query)), [commands, query]);
-
   function closePalette() {
     setPaletteOpen(false);
     window.setTimeout(() => previousFocus.current?.focus(), 0);
@@ -99,19 +98,51 @@ export function SystemChrome() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  function runCommand(index: number) {
-    const command = filtered[index];
-    if (!command) return;
+  function appendTerminalLines(lines: Omit<TerminalLine, "id">[]) {
+    setTerminalLines((current) => [...current, ...lines.map((line) => ({ ...line, id: terminalLineId.current++ }))]);
+  }
+
+  function runCommand() {
+    const value = query.trim();
+    if (!value) return;
+
+    if (value.toLowerCase() === "clear") {
+      setTerminalLines([]);
+      setQuery("");
+      return;
+    }
+
+    if (value.toLowerCase() === "help") {
+      appendTerminalLines([
+        { text: `alidvlpr@portfolio:~$ ${value}`, tone: "command" },
+        { text: "Available commands:" },
+        ...commands.map((command) => ({ text: `  ${command.label.padEnd(30, " ")} ${command.hint}` })),
+        { text: "  clear                          clear terminal output" },
+      ]);
+      setQuery("");
+      return;
+    }
+
+    const normalizedValue = value.toLowerCase();
+    const exactCommand = commands.find((command) => command.label.toLowerCase() === normalizedValue);
+    const fuzzyCommands = commands.filter((command) => fuzzyMatch(`${command.label} ${command.aliases}`, value));
+    const command = exactCommand ?? (fuzzyCommands.length === 1 ? fuzzyCommands[0] : undefined);
+
+    appendTerminalLines([{ text: `alidvlpr@portfolio:~$ ${value}`, tone: "command" }]);
+    if (!command) {
+      appendTerminalLines([{ text: `${value}: command not found`, tone: "error" }, { text: "Type 'help' to list available commands." }]);
+      setQuery("");
+      return;
+    }
     command.action();
     trackEvent("command_navigation_used", { source: command.label });
-    closePalette();
     setQuery("");
   }
 
   return (
     <>
       <div className="global-loader" ref={loader} role="status" aria-label="AliDvlpr portfolio loading">
-        <div className="boot-mark">ALIDVLPR<span>_SYS</span></div>
+        <div className="boot-mark">ALIDVLPR</div>
         <div className="boot-copy">
           {["Initializing services...", "Loading architecture...", "Connecting database...", "Ready."].map((line) => (
             <p className="boot-line" key={line}><span>›</span>{line}</p>
@@ -120,33 +151,27 @@ export function SystemChrome() {
         <div className="boot-progress"><i /></div>
       </div>
       <div className="ambient-layer" aria-hidden="true"><i /><i /><i /></div>
-      <button ref={trigger} className="palette-trigger" onClick={openPalette} aria-label="Open command palette">
-        <span>COMMAND</span><kbd>CTRL K</kbd>
+      <button ref={trigger} className="palette-trigger" onClick={openPalette} aria-label="Open Linux terminal">
+        <span>TERMINAL</span><kbd>CTRL K</kbd>
       </button>
       {paletteOpen && (
         <div className="palette-backdrop" role="presentation" onMouseDown={closePalette}>
-          <div className="command-palette" role="dialog" aria-modal="true" aria-label="Command palette" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="palette-input">
-              <span>›_</span>
-              <input autoFocus aria-label="Search commands" placeholder="Type a command..." value={query}
-                onChange={(event) => { setQuery(event.target.value); setActive(0); }}
-                onKeyDown={(event) => {
-                  if (event.key === "ArrowDown") { event.preventDefault(); setActive((value) => Math.min(value + 1, filtered.length - 1)); }
-                  if (event.key === "ArrowUp") { event.preventDefault(); setActive((value) => Math.max(value - 1, 0)); }
-                  if (event.key === "Enter") runCommand(active);
-                }} />
-              <kbd>ESC</kbd>
+          <div className="command-palette" role="dialog" aria-modal="true" aria-label="Linux terminal" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="palette-window-bar">
+              <div className="palette-window-title">alidvlpr@portfolio: ~</div>
+              <button className="palette-window-close" type="button" onClick={closePalette} aria-label="Close terminal">×</button>
             </div>
-            <div className="palette-results" role="listbox">
-              {filtered.map((command, index) => (
-                <button role="option" aria-selected={index === active} className={index === active ? "is-active" : ""}
-                  onMouseEnter={() => setActive(index)} onClick={() => runCommand(index)} key={command.label}>
-                  <span><i />{command.label}</span><kbd>{command.hint}</kbd>
-                </button>
-              ))}
-              {!filtered.length && <p className="palette-empty">No command found.</p>}
+            <div className="palette-terminal-output" aria-live="polite">
+              {terminalLines.map((line) => <pre key={line.id} className={line.tone ? `is-${line.tone}` : undefined}>{line.text}</pre>)}
+              <label className="palette-input">
+                <span className="palette-prompt"><b>alidvlpr@portfolio</b><i>:</i><strong>~</strong><em>$</em></span>
+                <input autoFocus aria-label="Terminal command" autoComplete="off" spellCheck={false} value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") runCommand();
+                  }} />
+              </label>
             </div>
-            <div className="palette-help"><span>↑↓ navigate</span><span>↵ select</span><span>esc close</span></div>
           </div>
         </div>
       )}

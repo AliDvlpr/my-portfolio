@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProject, projects } from "@/content/projects";
+import { getPublishedProject, getPublishedProjects } from "@/lib/cms/repository";
 import { Breadcrumbs } from "@/app/PagePrimitives";
 import { ProjectTracker } from "./ProjectTracker";
 import { ProjectSystemDemo } from "./ProjectSystemDemo";
 
-export function generateStaticParams() {
-  return projects.map(({ slug }) => ({ slug }));
+export async function generateStaticParams() {
+  return (await getPublishedProjects()).map(({ slug }) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const project = getProject((await params).slug);
+  const project = await getPublishedProject((await params).slug);
   if (!project) return {};
   return {
     title: `${project.title} Case Study | Ali Mohammadi`,
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 export default async function ProjectPage({ params }: { params: Promise<{ slug: string }> }) {
-  const project = getProject((await params).slug);
+  const project = await getPublishedProject((await params).slug);
   if (!project) notFound();
   const jsonLd = {
     "@context": "https://schema.org", "@type": "CreativeWork", name: project.title,

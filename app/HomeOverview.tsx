@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { featuredProjects } from "@/content/projects";
+import type { Project } from "@/content/projects";
 import { experience } from "@/content/profile";
 import { LiveSystems } from "./SystemExperience";
 import { RequestLifecycle } from "./BackendMotionSystem";
@@ -39,7 +39,7 @@ function ArchitectureMap() {
   </div>;
 }
 
-export function HomeOverview({ articles }: { articles: ArticlePreview[] }) {
+export function HomeOverview({ articles, featuredProjects }: { articles: ArticlePreview[]; featuredProjects: Project[] }) {
   const root = useRef<HTMLElement>(null);
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger);

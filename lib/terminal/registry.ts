@@ -25,10 +25,22 @@ export const terminalCommands: TerminalCommandDefinition[] = [
       if (parsed.args[0]) {
         const match = findCommand(parsed.args[0]);
         return match
-          ? text(`${match.name}\nusage: ${match.usage}\n${match.description}`)
+          ? text([
+            `${match.name} — ${match.description}`,
+            "",
+            `usage: ${match.usage}`,
+            ...(match.aliases?.length ? [`aliases: ${match.aliases.join(", ")}`] : []),
+          ].join("\n"))
           : text(`Unknown command "${parsed.args[0]}". Try: help`);
       }
-      return text(terminalCommands.map((command) => `${command.name.padEnd(14, " ")} ${command.description}`).join("\n"));
+      return text([
+        "AliDvlpr developer console",
+        "",
+        "Available commands:",
+        ...terminalCommands.map((command) => `${command.name.padEnd(14, " ")} ${command.description}`),
+        "",
+        "Tip: run `help <command>` for usage details.",
+      ].join("\n"));
     },
   },
   {
@@ -166,12 +178,6 @@ export const terminalCommands: TerminalCommandDefinition[] = [
     usage: "reset",
     description: "Reset the shared simulation state.",
     execute: () => action("Simulation reset to a stable baseline.", () => simulationStore.reset()),
-  },
-  {
-    name: "terminal",
-    usage: "terminal",
-    description: "Open the full developer console.",
-    execute: () => navigation("Opening /terminal", "/terminal"),
   },
   {
     name: "clear",

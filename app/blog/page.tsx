@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getAllBlogPosts } from "@/lib/content";
+import { getPublishedBlogPosts } from "@/lib/cms/repository";
 import { PageHeader } from "../PagePrimitives";
 import { BlogArchive } from "./BlogArchive";
 
@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   openGraph: { title: "Backend Engineering Notes", description: "Production-minded backend engineering articles.", url: "/blog", type: "website" },
 };
 
-export default function BlogPage() {
-  const posts = getAllBlogPosts();
+export default async function BlogPage() {
+  const posts = await getPublishedBlogPosts();
   return <main className="route-page blog-route" id="main-content">
     <PageHeader index="03" module="ENGINEERING_NOTES" path="/blog" title={<>Systems, explained<br />without the noise.</>} description="Field notes on production APIs, data boundaries, caching, queues, and the decisions that keep systems operable." />
     <BlogArchive posts={posts} />

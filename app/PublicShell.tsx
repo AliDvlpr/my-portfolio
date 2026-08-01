@@ -46,7 +46,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
   return <>
     <SystemChrome />
     <header className="global-nav">
-      <Link className="global-brand" href="/" aria-label="AliDvlpr home">ALIDVLPR</Link>
+      <Link className="global-brand" href="/" aria-label="AliDvlpr home">ALI<span>DVLPR</span></Link>
       <nav aria-label="Primary navigation">
         {publicRoutes.map((route) => <Link
           aria-current={routeIsActive(pathname, route.href) ? "page" : undefined}
