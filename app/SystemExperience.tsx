@@ -5,6 +5,7 @@ import gsap from "gsap";
 import { trackEvent } from "@/lib/analytics-client";
 import { publicRoutes } from "@/lib/routes";
 import { projects } from "@/content/projects";
+import { simulationStore } from "@/lib/simulation/store";
 
 type Command = { label: string; aliases: string; hint: string; action: () => void };
 
@@ -38,6 +39,13 @@ export function SystemChrome() {
   const commands = useMemo<Command[]>(() => [
     ...publicRoutes.map((route) => ({ label: route.command, aliases: `${route.label} ${route.module}`, hint: route.href, action: () => { window.location.href = route.href; } })),
     ...projects.map((project) => ({ label: `open project ${project.title}`, aliases: `${project.slug} ${project.stack.join(" ")}`, hint: `/projects/${project.slug}`, action: () => { window.location.href = `/projects/${project.slug}`; } })),
+    { label: "open API explorer", aliases: "lab api explorer developer portal", hint: "/lab/api", action: () => { window.location.href = "/lab/api"; } },
+    { label: "open architecture playground", aliases: "lab architecture presets", hint: "/lab/architecture", action: () => { window.location.href = "/lab/architecture"; } },
+    { label: "open observability", aliases: "lab metrics traces logs", hint: "/lab/observability", action: () => { window.location.href = "/lab/observability"; } },
+    { label: "open terminal", aliases: "developer console terminal", hint: "/terminal", action: () => { window.location.href = "/terminal"; } },
+    { label: "simulate cache miss", aliases: "failure scenario redis miss", hint: "ACTION", action: () => simulationStore.setScenario("cache-miss") },
+    { label: "simulate database delay", aliases: "slow database scenario", hint: "ACTION", action: () => simulationStore.setScenario("slow-database") },
+    { label: "reset simulation", aliases: "stable reset observability", hint: "RESET", action: () => simulationStore.reset() },
     { label: "open GitHub", aliases: "source repository", hint: "↗", action: () => window.open("https://github.com/AliDvlpr", "_blank", "noopener,noreferrer") },
     { label: "copy email", aliases: "contact address", hint: "COPY", action: () => { void navigator.clipboard.writeText("alimohammadi.8773@gmail.com"); } },
     { label: "toggle motion", aliases: "reduced animation", hint: "MOTION", action: () => document.documentElement.classList.toggle("motion-paused") },

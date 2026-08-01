@@ -1,11 +1,9 @@
-import { getChatGPTUser } from "@/app/chatgpt-auth";
-import { isAdminEmail } from "./env";
+import { requireAdminApiSession } from "./auth";
 
 export async function requireAdminApi() {
-  const user = await getChatGPTUser();
-  if (!user) return { authorized: false as const, status: 401, user: null };
-  if (!isAdminEmail(user.email)) return { authorized: false as const, status: 403, user };
-  return { authorized: true as const, status: 200, user };
+  const auth = await requireAdminApiSession();
+  if (!auth.authorized) return { authorized: false as const, status: auth.status, user: null };
+  return { authorized: true as const, status: 200, user: { email: auth.session.user.email, displayName: auth.session.user.name ?? auth.session.user.email, fullName: auth.session.user.name ?? null } };
 }
 
 export function hasSameOrigin(request: Request) {

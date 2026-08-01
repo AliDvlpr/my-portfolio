@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getProject, projects } from "@/content/projects";
 import { Breadcrumbs } from "@/app/PagePrimitives";
 import { ProjectTracker } from "./ProjectTracker";
+import { ProjectSystemDemo } from "./ProjectSystemDemo";
 
 export function generateStaticParams() {
   return projects.map(({ slug }) => ({ slug }));
@@ -39,6 +40,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
     <section className="case-section"><p>01 / PROBLEM & CONSTRAINTS</p><h2>What the system<br />needed to protect.</h2><div className="case-list">{project.challenges.map((item) => <article key={item}><i />{item}</article>)}</div></section>
     <section className="case-section case-architecture" id="architecture"><p>02 / ARCHITECTURE</p><h2>Boundaries before<br />infrastructure.</h2><div className="architecture-chain">{project.architecture.map((node, index) => <div key={node}><span>{String(index + 1).padStart(2, "0")}</span><b>{node}</b><i /></div>)}</div><details className="decision-log"><summary>OPEN REQUEST FLOW</summary><ol>{project.architecture.map((node, index) => <li key={node}><span>{index + 1}</span><p><b>{node}</b> validates or transforms the request before handing it to the next explicit boundary.</p></li>)}</ol></details></section>
     <section className="case-section case-columns"><div><p>03 / DECISIONS & TRADEOFFS</p><h2>Deliberate choices.</h2>{project.decisions.map((item) => <article key={item}>{item}</article>)}</div><div><p>04 / OUTCOMES</p><h2>Observable results.</h2>{project.outcomes.map((item) => <article key={item}>{item}</article>)}</div></section>
+    <ProjectSystemDemo slug={project.slug} />
     <footer className="case-links">
       <Link href="/projects">← PROJECT REGISTRY</Link>
       {project.repositoryUrl && <a href={project.repositoryUrl} target="_blank" rel="noreferrer">VIEW REPOSITORY ↗</a>}
