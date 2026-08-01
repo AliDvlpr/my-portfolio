@@ -9,6 +9,12 @@ const serverSchema = z.object({
   TURNSTILE_SECRET_KEY: z.string().min(8).optional(),
   RATE_LIMIT_SALT: z.string().min(16).optional(),
   ADMIN_EMAILS: z.string().optional(),
+  ADMIN_ALLOWED_EMAIL: z.string().email().optional(),
+  ADMIN_PASSWORD_HASH: z.string().optional(),
+  ADMIN_PASSWORD_HASH_BASE64: z.string().optional(),
+  AUTH_SECRET: z.string().min(16).optional(),
+  AUTH_GOOGLE_ID: z.string().optional(),
+  AUTH_GOOGLE_SECRET: z.string().optional(),
   SITE_URL: z.string().url().default("http://localhost:5173"),
   ANALYTICS_ENABLED: z.enum(["true", "false"]).default("true"),
 });
@@ -36,6 +42,27 @@ export function getPublicEnv() {
   };
 }
 
+export function getNormalizedAdminPasswordHash(env = getServerEnv()) {
+  const base64Value = env.ADMIN_PASSWORD_HASH_BASE64?.trim();
+  if (base64Value) {
+    try {
+      return Buffer.from(base64Value, "base64").toString("utf8").trim();
+    } catch {
+      return "";
+    }
+  }
+  const rawValue = env.ADMIN_PASSWORD_HASH?.trim() ?? "";
+  if (!rawValue) return "";
+  return rawValue
+    .replace(/^['"]|['"]$/g, "")
+    .replace(/\\\$/g, "$")
+    .trim();
+}
+
 export function isAdminEmail(email: string, env = getServerEnv()) {
-  return (env.ADMIN_EMAILS ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean).includes(email.toLowerCase());
+  const allowlist = [
+    ...(env.ADMIN_EMAILS ?? "").split(","),
+    env.ADMIN_ALLOWED_EMAIL ?? "",
+  ].map((value) => value.trim().toLowerCase()).filter(Boolean);
+  return allowlist.includes(email.toLowerCase());
 }

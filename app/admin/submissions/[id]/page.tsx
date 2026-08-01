@@ -2,25 +2,23 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { requireChatGPTUser } from "@/app/chatgpt-auth";
 import { getDb } from "@/db";
 import { adminAudit, contactSubmissions } from "@/db/schema";
-import { isAdminEmail } from "@/lib/env";
+import { requireAdminSession } from "@/lib/auth";
 import { StatusForm } from "./StatusForm";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Submission | Admin", robots: { index: false, follow: false } };
 
 export default async function SubmissionPage({ params }: { params: Promise<{ id: string }> }) {
-  const user = await requireChatGPTUser(`/admin/submissions/${(await params).id}`);
-  if (!isAdminEmail(user.email)) return <main className="admin-denied"><h1>403</h1></main>;
+  const session = await requireAdminSession();
   const id = (await params).id;
   const db = getDb();
   const [submission] = await db.select().from(contactSubmissions).where(eq(contactSubmissions.id, id)).limit(1);
   if (!submission) notFound();
   await db.insert(adminAudit).values({
     id: crypto.randomUUID(), action: "submission.read", entityType: "contact_submission",
-    entityId: id, actor: user.email, metadata: null, createdAt: new Date().toISOString(),
+    entityId: id, actor: session.user.email, metadata: null, createdAt: new Date().toISOString(),
   });
   return <main className="admin-page admin-detail" id="main-content">
     <header className="admin-nav"><Link href="/admin">← SUBMISSIONS</Link><span>{submission.requestId}</span></header>

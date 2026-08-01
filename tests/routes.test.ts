@@ -12,7 +12,9 @@ test("public route registry has unique paths, labels, commands, and modules", ()
 test("route matching handles indexes and detail routes", () => {
   assert.equal(routeIsActive("/", "/"), true);
   assert.equal(routeIsActive("/projects/django-store", "/projects"), true);
+  assert.equal(routeIsActive("/lab/api", "/lab"), true);
   assert.equal(routeIsActive("/blog/post", "/projects"), false);
   assert.equal(moduleForPath("/blog/post"), "engineering-notes");
+  assert.equal(moduleForPath("/lab/observability"), "developer-lab");
   assert.equal(moduleForPath("/unknown"), "unregistered");
 });

@@ -15,12 +15,15 @@
     "typecheck": "bash scripts/sites-env.sh -- tsc --noEmit",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate"
+    "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",
+    "auth:hash-password": "node scripts/hash-admin-password.mjs"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "drizzle-orm": "0.45.2",
     "gsap": "^3.13.0",
     "next": "16.2.6",
+    "next-auth": "^4.24.15",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "react-email": "^6.9.1",
