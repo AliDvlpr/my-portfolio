@@ -2,6 +2,8 @@
 
 A React 19 portfolio running on Vinext and Cloudflare Workers. The public experience combines the Phase 1 system interface and Phase 2 backend motion system with a production contact pipeline, validated MDX content, project case studies, a protected owner console, privacy-conscious analytics, and D1 persistence.
 
+Homepage motion architecture and extension guidance: [`docs/homepage-motion.md`](docs/homepage-motion.md).
+
 ## Phase 7 CMS
 
 The authenticated `/admin` area is a single-owner content control plane. Editable posts and projects live in D1; the checked-in MDX and TypeScript sources are import-only fallback content and are never mutated at runtime. Public routes prefer published D1 records and fall back to source content only while the CMS migration is unavailable or empty.
