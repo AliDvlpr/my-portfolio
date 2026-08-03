@@ -4,7 +4,7 @@ import { render, toPlainText } from "react-email";
 import { contactAttempts, contactSubmissions } from "@/db/schema";
 import { getDb } from "@/db";
 import { OwnerContactEmail, VisitorConfirmationEmail } from "@/emails/ContactEmails";
-import { assertContactProductionEnv, getServerEnv } from "./env";
+import { assertContactProductionEnv, getServerEnv, isConfiguredValue } from "./env";
 import type { ContactDependencies, StoredContact } from "./contact-service";
 
 async function sha256(value: string) {
@@ -17,16 +17,20 @@ export function createProductionContactDependencies(): ContactDependencies {
   const env = getServerEnv();
   assertContactProductionEnv(env);
   const db = getDb();
+  const turnstileSecret = isConfiguredValue(env.TURNSTILE_SECRET_KEY) ? env.TURNSTILE_SECRET_KEY : undefined;
+  const resendApiKey = isConfiguredValue(env.RESEND_API_KEY) ? env.RESEND_API_KEY : undefined;
+  const rateLimitSalt = isConfiguredValue(env.RATE_LIMIT_SALT) ? env.RATE_LIMIT_SALT : "development-only-salt";
 
   return {
     now: () => Date.now(),
     createId: () => `contact_${crypto.randomUUID().replaceAll("-", "")}`,
-    hash: (value) => sha256(`${env.RATE_LIMIT_SALT ?? "development-only-salt"}|${value}`),
+    hash: (value) => sha256(`${rateLimitSalt}|${value}`),
     async verifyTurnstile(token, requestId) {
-      if (!env.TURNSTILE_SECRET_KEY && process.env.NODE_ENV !== "production") return token === "development-bypass";
-      if (!env.TURNSTILE_SECRET_KEY || !token) return false;
+      if (process.env.NODE_ENV !== "production" && token === "development-bypass") return true;
+      if (!turnstileSecret && process.env.NODE_ENV !== "production") return true;
+      if (!turnstileSecret || !token) return false;
       const body = new FormData();
-      body.set("secret", env.TURNSTILE_SECRET_KEY);
+      body.set("secret", turnstileSecret);
       body.set("response", token);
       body.set("idempotency_key", requestId);
       const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
@@ -77,9 +81,9 @@ export function createProductionContactDependencies(): ContactDependencies {
       await db.update(contactSubmissions).set({ emailDeliveryStatus: status, status: status === "failed" ? "failed" : undefined, updatedAt: new Date().toISOString() }).where(eq(contactSubmissions.requestId, requestId));
     },
     async sendEmails(contact: StoredContact) {
-      if (!env.RESEND_API_KEY && process.env.NODE_ENV !== "production") return;
-      if (!env.RESEND_API_KEY || !env.CONTACT_FROM_EMAIL || !env.CONTACT_TO_EMAIL) throw new Error("Email configuration unavailable");
-      const resend = new Resend(env.RESEND_API_KEY);
+      if (!resendApiKey && process.env.NODE_ENV !== "production") return "skipped";
+      if (!resendApiKey || !env.CONTACT_FROM_EMAIL || !env.CONTACT_TO_EMAIL) throw new Error("Email configuration unavailable");
+      const resend = new Resend(resendApiKey);
       const templateProps = {
         name: contact.name,
         email: contact.email,
@@ -112,6 +116,7 @@ export function createProductionContactDependencies(): ContactDependencies {
         headers: { "Idempotency-Key": `${contact.requestId}-visitor` },
       });
       if (visitor.error) throw visitor.error;
+      return "sent";
     },
   };
 }

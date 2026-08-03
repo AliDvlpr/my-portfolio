@@ -24,7 +24,7 @@ function dependencies(overrides: Partial<ContactDependencies> = {}): ContactDepe
     recordAttempt: async () => undefined,
     persist: async () => undefined,
     updateDelivery: async () => undefined,
-    sendEmails: async () => undefined,
+    sendEmails: async () => "sent",
     ...overrides,
   };
 }
@@ -34,7 +34,7 @@ test("accepts, persists, and sends a valid submission", async () => {
   let sent = false;
   const result = await processContactSubmission(payload, "source", dependencies({
     persist: async () => { persisted = true; },
-    sendEmails: async () => { sent = true; },
+    sendEmails: async () => { sent = true; return "sent"; },
   }));
   assert.equal(result.status, 201);
   assert.equal(persisted, true);

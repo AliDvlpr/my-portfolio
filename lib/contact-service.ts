@@ -34,7 +34,7 @@ export type ContactDependencies = {
   recordAttempt(sourceHash: string, payloadHash: string, accepted: boolean, now: number): Promise<void>;
   persist(contact: StoredContact): Promise<void>;
   updateDelivery(requestId: string, status: "sent" | "failed" | "skipped"): Promise<void>;
-  sendEmails(contact: StoredContact): Promise<void>;
+  sendEmails(contact: StoredContact): Promise<"sent" | "skipped">;
 };
 
 export async function processContactSubmission(
@@ -92,8 +92,8 @@ export async function processContactSubmission(
   }
 
   try {
-    await dependencies.sendEmails(contact);
-    await dependencies.updateDelivery(requestId, "sent");
+    const deliveryStatus = await dependencies.sendEmails(contact);
+    await dependencies.updateDelivery(requestId, deliveryStatus);
     return { success: true, status: 201, requestId, message: "Message accepted" };
   } catch {
     await dependencies.updateDelivery(requestId, "failed");

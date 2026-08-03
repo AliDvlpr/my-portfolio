@@ -1,25 +1,39 @@
 import { z } from "zod";
 
-const optionalEmail = z.string().email().optional();
+const emptyToUndefined = (value: unknown) => typeof value === "string" && value.trim() === "" ? undefined : value;
+const optionalString = (schema = z.string()) => z.preprocess(emptyToUndefined, schema.optional());
+const optionalEmail = optionalString(z.string().email());
+const TURNSTILE_TEST_KEY_PATTERN = /^[123]x0+(?:AA|AB|BB|FF)$/;
+const PLACEHOLDER_PATTERN = /(replace|placeholder|change[-_ ]?me|example|your[-_])/i;
+
 const serverSchema = z.object({
-  RESEND_API_KEY: z.string().min(8).optional(),
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: optionalString(),
+  RESEND_API_KEY: optionalString(z.string().min(8)),
   CONTACT_FROM_EMAIL: optionalEmail,
   CONTACT_TO_EMAIL: optionalEmail,
   CONTACT_REPLY_TO_EMAIL: optionalEmail,
-  TURNSTILE_SECRET_KEY: z.string().min(8).optional(),
-  RATE_LIMIT_SALT: z.string().min(16).optional(),
-  ADMIN_EMAILS: z.string().optional(),
+  TURNSTILE_SECRET_KEY: optionalString(z.string().min(8)),
+  RATE_LIMIT_SALT: optionalString(z.string().min(16)),
+  ADMIN_EMAILS: optionalString(),
   ADMIN_ALLOWED_EMAIL: z.string().email().optional(),
-  ADMIN_PASSWORD_HASH: z.string().optional(),
-  ADMIN_PASSWORD_HASH_BASE64: z.string().optional(),
-  AUTH_SECRET: z.string().min(16).optional(),
-  AUTH_GOOGLE_ID: z.string().optional(),
-  AUTH_GOOGLE_SECRET: z.string().optional(),
+  ADMIN_PASSWORD_HASH: optionalString(),
+  ADMIN_PASSWORD_HASH_BASE64: optionalString(),
+  AUTH_SECRET: optionalString(z.string().min(16)),
+  AUTH_GOOGLE_ID: optionalString(),
+  AUTH_GOOGLE_SECRET: optionalString(),
   SITE_URL: z.string().url().default("http://localhost:5173"),
   ANALYTICS_ENABLED: z.enum(["true", "false"]).default("true"),
 });
 
 export type ServerEnv = z.infer<typeof serverSchema>;
+
+export function isConfiguredValue(value: string | undefined) {
+  return Boolean(value?.trim()) && !PLACEHOLDER_PATTERN.test(value ?? "");
+}
+
+export function isTurnstileTestKey(value: string | undefined) {
+  return TURNSTILE_TEST_KEY_PATTERN.test(value?.trim() ?? "");
+}
 
 export function getServerEnv(source: Record<string, string | undefined> = process.env): ServerEnv {
   const parsed = serverSchema.safeParse(source);
@@ -31,9 +45,12 @@ export function getServerEnv(source: Record<string, string | undefined> = proces
 
 export function assertContactProductionEnv(env: ServerEnv, production = process.env.NODE_ENV === "production") {
   if (!production) return;
-  const required = ["RESEND_API_KEY", "CONTACT_FROM_EMAIL", "CONTACT_TO_EMAIL", "TURNSTILE_SECRET_KEY", "RATE_LIMIT_SALT"] as const;
-  const missing = required.filter((key) => !env[key]);
+  const required = ["RESEND_API_KEY", "CONTACT_FROM_EMAIL", "CONTACT_TO_EMAIL", "TURNSTILE_SECRET_KEY", "RATE_LIMIT_SALT", "NEXT_PUBLIC_TURNSTILE_SITE_KEY"] as const;
+  const missing = required.filter((key) => !isConfiguredValue(env[key]));
   if (missing.length) throw new Error(`Missing production contact configuration: ${missing.join(", ")}`);
+  if (isTurnstileTestKey(env.TURNSTILE_SECRET_KEY) || isTurnstileTestKey(env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)) {
+    throw new Error("Cloudflare Turnstile test credentials cannot be used in production.");
+  }
 }
 
 export function getPublicEnv() {
